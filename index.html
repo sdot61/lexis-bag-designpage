@@ -334,11 +334,14 @@ function rebuildShape(record){
   // rendered. This naturally eats corners at the top/bottom and produces
   // polygons where a corner reaches a surface corner.
   let clipped=raw;
-  const inset=Math.min(.006,w*.002);
-  clipped=clipPolygon(clipped,'x',-w/2+inset,true);
-  clipped=clipPolygon(clipped,'x',w/2-inset,false);
-  clipped=clipPolygon(clipped,'y',bottom+inset,true);
-  clipped=clipPolygon(clipped,'y',top-inset,false);
+  // The surface boundary is an exact ownership boundary. If a shape reaches
+  // the same coordinate as the surface, that edge belongs to the shape.
+  // Do not inset the clip: doing so leaves a visible strip of surface beneath
+  // or beyond a shape.
+  clipped=clipPolygon(clipped,'x',-w/2,true);
+  clipped=clipPolygon(clipped,'x',w/2,false);
+  clipped=clipPolygon(clipped,'y',bottom,true);
+  clipped=clipPolygon(clipped,'y',top,false);
   if(clipped.length<3)return;
 
   const shape=new THREE.Shape();
@@ -376,8 +379,8 @@ function rebuildShape(record){
   // Only the right boundary is a hit target. It is invisible, so the visible
   // boundary remains the actual shape edge rather than a second adjustment line.
   const handlePoints=[
-    new THREE.Vector3(record.rightBoundary.bottom,Math.max(bottom,inset-bottom),.255),
-    new THREE.Vector3(record.rightBoundary.top,Math.min(top,top-inset),.255)
+    new THREE.Vector3(record.rightBoundary.bottom,bottom,.255),
+    new THREE.Vector3(record.rightBoundary.top,top,.255)
   ];
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints),
