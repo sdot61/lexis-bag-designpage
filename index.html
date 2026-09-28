@@ -24,7 +24,7 @@ main{width:100%;max-width:1180px;margin:10px auto 70px;padding:0 20px}
 .panel-title{font-size:16px;font-weight:700;margin:0 0 22px}.bag-choice{border:0;background:none;padding:0;font:inherit;font-size:16px;color:#222;cursor:pointer;text-align:left}.bag-choice:hover{text-decoration:underline}
 .panel-rule{border:0;border-top:2px dashed #000;margin:24px 0}
 .size-options{display:flex;flex-direction:column;gap:12px}.size-option{border:0;background:none;padding:0;font:inherit;font-size:15px;text-align:left;cursor:pointer}.size-option:hover{text-decoration:underline}.size-option.active{font-weight:700}
-.color-title{font-size:15px;margin:0 0 16px}.swatch-list{display:flex;flex-direction:column;gap:14px}.swatch{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font:inherit;font-size:14px;cursor:pointer;text-align:left}.smudge{width:34px;height:26px;display:inline-block;border-radius:55% 42% 62% 38% / 48% 58% 42% 52%;transform:rotate(-7deg);box-shadow:inset 4px 2px 0 rgba(255,255,255,.22),inset -3px -2px 0 rgba(0,0,0,.08)}
+.color-title{font-size:15px;margin:0 0 16px}.swatch-list{display:flex;flex-direction:column;gap:14px}.swatch{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font:inherit;font-size:14px;cursor:pointer;text-align:left}.add-cart{margin-top:auto;width:100%;border:2px solid #f2c94c;border-radius:999px;background:#f2c94c;color:#fff;padding:12px 10px;font:inherit;font-size:16px;font-weight:700;cursor:pointer}.add-cart:hover{filter:brightness(.96)}.smudge{width:34px;height:26px;display:inline-block;border-radius:55% 42% 62% 38% / 48% 58% 42% 52%;transform:rotate(-7deg);box-shadow:inset 4px 2px 0 rgba(255,255,255,.22),inset -3px -2px 0 rgba(0,0,0,.08)}
 .smudge.teal{background:#1bb5b2}.smudge.white{background:#fff;border:1px solid #aaa}.smudge.pink{background:#f06292}.smudge.purple{background:#9b5de5}.smudge.black{background:#111}
 #scene{width:100%;height:100%;min-height:650px;display:block}.designer-main:before{content:"";position:absolute;left:12%;right:12%;bottom:7%;height:1px;background:rgba(0,0,0,.06)}
 .bag-hint{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:#777;pointer-events:none}
@@ -63,6 +63,7 @@ footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.soc
 <button class="swatch" data-color="#9b5de5"><span class="smudge purple"></span>Purple</button>
 <button class="swatch" data-color="#111111"><span class="smudge black"></span>Black</button>
 </div>
+<button class="add-cart" id="addCart">Add to Cart!</button>
 </aside>
 </div></div></main>
 <footer><div class="social-links"><a href="https://www.instagram.com/lexistreefort/" target="_blank">Instagram</a><a href="https://www.facebook.com/lexistreefort/" target="_blank">Facebook</a></div><p>&copy; 2026 by Lexi's Tree Fort.</p></footer>
@@ -86,36 +87,58 @@ const surfaces=[];
 const white=()=>new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
 const black=()=>new THREE.LineBasicMaterial({color:0x000000});
 
-function roundedPanel(name,w,h,r,z){
+function roundedPanel(name,w,h,r,z,x=0){
   const shape=new THREE.Shape();
   shape.moveTo(-w/2+r,-h/2); shape.lineTo(w/2-r,-h/2);
   shape.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);
   shape.lineTo(w/2,h/2-r); shape.quadraticCurveTo(w/2,h/2,w/2-r,h/2);
   shape.lineTo(-w/2+r,h/2); shape.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);
   shape.lineTo(-w/2,-h/2+r); shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);
-  const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:3,bevelSize:.045,bevelThickness:.035,curveSegments:8});
-  const mesh=new THREE.Mesh(geo,white()); mesh.position.z=z; mesh.userData.surface=name;
-  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,20),black());
-  edges.position.copy(mesh.position); group.add(mesh,edges); surfaces.push(mesh);
+  const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
+  const mesh=new THREE.Mesh(geo,white()); mesh.position.set(x,0,z); mesh.userData.surface=name;
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),black()); edges.position.copy(mesh.position);
+  const pair=new THREE.Group(); pair.add(mesh,edges); group.add(pair); surfaces.push(mesh);
   return mesh;
 }
 
-// Compact, rounded messenger bag sized comfortably inside the design panel.
-roundedPanel('front',3.45,2.45,.28,.55);
-roundedPanel('back',3.45,2.45,.28,-.62);
-roundedPanel('side 1',.52,2.18,.18,-.03).position.x=-1.72;
-roundedPanel('side 2',.52,2.18,.18,-.03).position.x=1.72;
-const bottomShape=new THREE.Shape();
-bottomShape.moveTo(-1.55,-.22); bottomShape.quadraticCurveTo(0,-.42,1.55,-.22);
-bottomShape.lineTo(1.55,.22); bottomShape.quadraticCurveTo(0,.42,-1.55,.22); bottomShape.closePath();
-const bottom=new THREE.Mesh(new THREE.ShapeGeometry(bottomShape),white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom'; group.add(bottom); surfaces.push(bottom);
-const flap=new THREE.Mesh(new THREE.BoxGeometry(3.5,1.12,.18),white());
-flap.position.set(0,1.72,.47); flap.rotation.x=-.16; flap.userData.surface='front cover'; group.add(flap); surfaces.push(flap);
-const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flap.geometry,20),black()); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation); group.add(flapEdges);
+// All bag panels have rounded corners and complete perimeter outlines.
+roundedPanel('front',3.45,2.45,.30,.55);
+roundedPanel('back',3.45,2.45,.30,-.62);
+roundedPanel('side 1',.72,2.18,.24,-.03,-1.72);
+roundedPanel('side 2',.72,2.18,.24,-.03,1.72);
 
-// Rounded flap opening/contour line.
-const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-1.48,1.34,.59),new THREE.Vector3(0,1.05,.68),new THREE.Vector3(1.48,1.34,.59));
-group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),black()));
+const bottomShape=new THREE.Shape();
+bottomShape.moveTo(-1.55,-.22);
+bottomShape.quadraticCurveTo(-.8,-.42,0,-.45);
+bottomShape.quadraticCurveTo(.8,-.42,1.55,-.22);
+bottomShape.lineTo(1.55,.22);
+bottomShape.quadraticCurveTo(.8,.42,0,.45);
+bottomShape.quadraticCurveTo(-.8,.42,-1.55,.22);
+bottomShape.closePath();
+const bottomGeo=new THREE.ExtrudeGeometry(bottomShape,{depth:.12,bevelEnabled:true,bevelSegments:4,bevelSize:.05,bevelThickness:.04,curveSegments:12});
+const bottom=new THREE.Mesh(bottomGeo,white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom';
+const bottomEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bottomGeo,12),black()); bottomEdges.position.copy(bottom.position); bottomEdges.rotation.copy(bottom.rotation);
+group.add(bottom,bottomEdges); surfaces.push(bottom);
+
+// Rounded front cover rather than a square box.
+const flapShape=new THREE.Shape();
+flapShape.moveTo(-1.55,-.42);
+flapShape.quadraticCurveTo(-1.48,-.58,-1.28,-.58);
+flapShape.lineTo(1.28,-.58);
+flapShape.quadraticCurveTo(1.48,-.58,1.55,-.42);
+flapShape.lineTo(1.55,.42);
+flapShape.quadraticCurveTo(1.48,.56,1.28,.56);
+flapShape.lineTo(-1.28,.56);
+flapShape.quadraticCurveTo(-1.48,.56,-1.55,.42);
+flapShape.closePath();
+const flapGeo=new THREE.ExtrudeGeometry(flapShape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
+const flap=new THREE.Mesh(flapGeo,white()); flap.position.set(0,1.70,.47); flap.rotation.x=-.16; flap.userData.surface='front cover';
+const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flapGeo,12),black()); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation);
+group.add(flap,flapEdges); surfaces.push(flap);
+
+// Curved opening contour.
+const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-1.40,1.34,.61),new THREE.Vector3(0,1.05,.70),new THREE.Vector3(1.40,1.34,.61));
+group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(48)),black()));
 
 // Continuous rounded strap.
 const strapCurve=new THREE.CatmullRomCurve3([
@@ -124,27 +147,36 @@ const strapCurve=new THREE.CatmullRomCurve3([
  new THREE.Vector3(1.75,3.55,-.55),new THREE.Vector3(2.05,2.45,-.15),
  new THREE.Vector3(1.42,1.45,.15)
 ]);
-const strapGeo=new THREE.TubeGeometry(strapCurve,48,.035,8,false);
-group.add(new THREE.LineSegments(new THREE.EdgesGeometry(strapGeo,25),black()));
-group.scale.set(.78,.78,.78); group.position.y=-.35; group.rotation.y=-.28;
+const strapGeo=new THREE.TubeGeometry(strapCurve,64,.045,10,false);
+group.add(new THREE.LineSegments(new THREE.EdgesGeometry(strapGeo,18),black()));
+group.scale.set(.78,.78,.78); group.position.y=-.35; group.rotation.set(0,-.28,0);
 
-const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(); let hovered=null,targetSpeed=0;
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(); let hovered=null,targetSpeed=0,targetPitch=0;
 function hover(obj,on){if(obj)obj.material.color.set(on?0xd9f5f5:0xffffff)}
 canvas.addEventListener('pointermove',e=>{
  const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;
  pointer.x=x*2-1; pointer.y=-((e.clientY-r.top)/r.height)*2+1;
  const edge=Math.max(0,(Math.abs(x-.5)-.32)/.18);
  targetSpeed=(x<.18?1:x>.82?-1:0)*edge*.018;
+ const y=(e.clientY-r.top)/r.height;
+ const verticalEdge=Math.max(0,(Math.abs(y-.5)-.32)/.18);
+ targetPitch=(y<.18?-.018:y>.82?.018:0)*verticalEdge;
  ray.setFromCamera(pointer,camera);
  const hit=ray.intersectObjects(surfaces,false)[0]?.object||null;
  if(hit!==hovered){hover(hovered,false);hovered=hit;hover(hovered,true)}
 });
-canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0});
+canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0;targetPitch=0});
 document.getElementById('messengerButton').addEventListener('click',()=>group.visible=true);
 document.querySelectorAll('.size-option').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.size-option').forEach(x=>x.classList.remove('active'));b.classList.add('active')}));
 document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{if(hovered)hovered.material.color.set(b.dataset.color)}));
+document.getElementById('addCart').addEventListener('click',()=>{
+ const size=document.querySelector('.size-option.active')?.textContent.trim()||'Small';
+ const item={product:'Messenger Bag',size,addedAt:new Date().toISOString()};
+ const cart=JSON.parse(localStorage.getItem('lexisTreeFortCart')||'[]'); cart.push(item); localStorage.setItem('lexisTreeFortCart',JSON.stringify(cart));
+ const button=document.getElementById('addCart'); button.textContent='Added to Cart!'; setTimeout(()=>button.textContent='Add to Cart!',1400);
+});
 function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);
-function animate(){requestAnimationFrame(animate);group.rotation.y+=targetSpeed;controls.update();renderer.render(scene,camera)} animate();
+function animate(){requestAnimationFrame(animate);group.rotation.y+=targetSpeed;group.rotation.x=Math.max(-.95,Math.min(.95,group.rotation.x+targetPitch));controls.update();renderer.render(scene,camera)} animate();
 </script>
 </body></html>
