@@ -275,11 +275,18 @@ function updatePolygonStatus(){
  const base=selectedSurface,status=document.getElementById('polygonStatus');
  const records=base?(polygonRecords.get(base)||[]):[];
  if(!base){status.textContent='Select a surface.';polygonPicker.classList.remove('visible');deleteShapeButton.classList.remove('visible');return}
- if(base.userData.noPolygons){
-   status.textContent=base.userData.surface==='flap-back bridge'?'Accessory · color only':'Hinge · color only';
+ if(base.userData.surface==='flap-back bridge'){
+   status.textContent='Accessory · color only';
    polygonPicker.classList.remove('visible');
    deleteShapeButton.classList.remove('visible');
-   document.querySelectorAll('.orientation-option').forEach(x=>x.classList.toggle('active',x.dataset.orientation==='select'&&base.userData.surface==='flap-back bridge'));
+   document.querySelectorAll('.orientation-option').forEach(x=>x.classList.toggle('active',x.dataset.orientation==='select'));
+   return;
+ }
+ if(base.userData.noPolygons){
+   status.textContent='Hinge · color only';
+   polygonPicker.classList.remove('visible');
+   deleteShapeButton.classList.remove('visible');
+   document.querySelectorAll('.orientation-option').forEach(x=>x.classList.remove('active'));
    return;
  }
  polygonOrientation=surfaceOrientations.get(base)||null;
@@ -648,7 +655,7 @@ document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
 }));
 document.querySelectorAll('.orientation-option').forEach(b=>b.addEventListener('click',e=>{
  e.stopPropagation();
- if(!selectedSurface||!selectedSurface.userData.noPolygons)return;
+ if(!selectedSurface||selectedSurface.userData.surface!=='flap-back bridge')return;
  b.classList.add('active');
  selectedTarget=selectedSurface;
  updatePolygonStatus();
