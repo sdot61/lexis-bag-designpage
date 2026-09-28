@@ -20,7 +20,7 @@ main{width:100%;max-width:1180px;margin:10px auto 70px;padding:0 20px}
 .workspace-title{font-size:1.5rem;font-weight:700;letter-spacing:1px;color:#333;margin:0 0 34px;text-transform:uppercase}
 .designer-layout{width:100%;max-width:1160px;display:grid;grid-template-columns:190px minmax(520px,1fr) 190px;gap:24px;align-items:stretch}
 .designer-side,.designer-main{min-height:650px;background:#fff;border:2px solid #000;box-shadow:0 2px 8px rgba(0,0,0,.04)}
-.designer-side{border-radius:18px;padding:28px 20px;text-align:left}.designer-main{border-radius:0;position:relative;overflow:hidden}
+.designer-side{border-radius:18px;padding:28px 20px;text-align:left}.controls-panel{display:flex;flex-direction:column}.designer-main{border-radius:0;position:relative;overflow:hidden}
 .panel-title{font-size:16px;font-weight:700;margin:0 0 22px}.bag-choice{border:0;background:none;padding:0;font:inherit;font-size:16px;color:#222;cursor:pointer;text-align:left}.bag-choice:hover{text-decoration:underline}
 .panel-rule{border:0;border-top:2px dashed #000;margin:24px 0}
 .size-options{display:flex;flex-direction:column;gap:12px}.size-option{border:0;background:none;padding:0;font:inherit;font-size:15px;text-align:left;cursor:pointer}.size-option:hover{text-decoration:underline}.size-option.active{font-weight:700}
@@ -51,7 +51,7 @@ footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.soc
 <section class="designer-main" id="designer">
 <canvas id="scene"></canvas><div class="bag-hint">Move toward either edge to rotate · move back over the bag to inspect surfaces</div>
 </section>
-<aside class="designer-side">
+<aside class="designer-side controls-panel">
 <h2 class="panel-title">Size</h2>
 <div class="size-options"><button class="size-option active">Small</button><button class="size-option">Medium</button><button class="size-option">Large</button></div>
 <hr class="panel-rule">
@@ -98,7 +98,7 @@ function roundedPanel(name,w,h,r,z,x=0){
   const mesh=new THREE.Mesh(geo,white()); mesh.position.set(x,0,z); mesh.userData.surface=name;
   const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),black()); edges.position.copy(mesh.position);
   const pair=new THREE.Group(); pair.add(mesh,edges); group.add(pair); surfaces.push(mesh);
-  return mesh;
+  return pair;
 }
 
 // All bag panels have rounded corners and complete perimeter outlines.
