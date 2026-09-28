@@ -284,32 +284,28 @@ const shapeTemplates={
  wide:.23
 };
 function rebuildShape(record){
- const surface=record.surface, w=surface.userData.width,h=surface.userData.height;
+ const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
  const orientation=record.orientation||surfaceOrientations.get(surface)||'right';
  const inset=Math.min(.045,w*.02,h*.02);
- const surfaceLeft=-w/2+inset, surfaceRight=w/2-inset;
+ const surfaceLeft=-w/2+inset,surfaceRight=w/2-inset;
  const left=record.start*w-w/2+inset;
- const right=record.end*w-w/2-inset;
- const allocationLeft=left, allocationRight=right;
+ const right=record.end*w-w/2+inset;
  const span=Math.max(.0001,right-left);
  const magnitude=Math.min(span*.38,w*.12)*(orientation==='right'?1:-1);
- const bottomShift=orientation==='right'?magnitude:-magnitude;
- const topShift=bottomShift;
- // Build the intended parallelogram, then clip it to the actual surface rectangle.
+ const shift=magnitude;
+
+ // Every shape is defined by two neighboring vertical positions.
+ // The next shape's left edge is the previous shape's right edge,
+ // so adjacent shapes share the exact same slanted perimeter.
  const raw=[
    new THREE.Vector2(left,-h/2+inset),
    new THREE.Vector2(right,-h/2+inset),
-   new THREE.Vector2(right+topShift,h/2-inset),
-   new THREE.Vector2(left+topShift,h/2-inset)
+   new THREE.Vector2(right+shift,h/2-inset),
+   new THREE.Vector2(left+shift,h/2-inset)
  ];
- const rect=new THREE.Shape();
- rect.moveTo(surfaceLeft,-h/2+inset);
- rect.lineTo(surfaceRight,-h/2+inset);
- rect.lineTo(surfaceRight,h/2-inset);
- rect.lineTo(surfaceLeft,h/2-inset);
- rect.closePath();
- const poly=new THREE.Path(raw.map((p,i)=>i===0?new THREE.Vector2(p.x,p.y):new THREE.Vector2(p.x,p.y)));
- // Sutherland-Hodgman clipping against the surface rectangle.
+
+ // Clip only against the actual surface. Do not clip against this
+ // shape's nominal allocation, because that would destroy the shared edge.
  function clip(points,axis,value,keepGreater){
    const out=[];
    for(let i=0;i<points.length;i++){
@@ -317,19 +313,23 @@ function rebuildShape(record){
      const pIn=keepGreater?(P[axis]>=value):(P[axis]<=value);
      const qIn=keepGreater?(Q[axis]>=value):(Q[axis]<=value);
      if(pIn!==qIn){
-       const t=(value-P[axis])/(Q[axis]-P[axis]);
-       out.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
+       const denom=Q[axis]-P[axis];
+       if(Math.abs(denom)>1e-9){
+         const t=(value-P[axis])/denom;
+         out.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
+       }
      }
      if(qIn)out.push(Q.clone());
    }
    return out;
  }
  let clipped=raw;
- clipped=clip(clipped,'x',Math.max(surfaceLeft,allocationLeft),true);
- clipped=clip(clipped,'x',Math.min(surfaceRight,allocationRight),false);
+ clipped=clip(clipped,'x',surfaceLeft,true);
+ clipped=clip(clipped,'x',surfaceRight,false);
  clipped=clip(clipped,'y',-h/2+inset,true);
  clipped=clip(clipped,'y',h/2-inset,false);
  if(clipped.length<3)return;
+
  const shape=new THREE.Shape();
  shape.moveTo(clipped[0].x,clipped[0].y);
  clipped.slice(1).forEach(p=>shape.lineTo(p.x,p.y));
@@ -356,12 +356,15 @@ function rebuildShape(record){
 
  const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,.249));
  edgePoints.push(edgePoints[0].clone());
- record.edge=new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgePoints),new THREE.LineBasicMaterial({color:0x000000}));
+ record.edge=new THREE.Line(
+   new THREE.BufferGeometry().setFromPoints(edgePoints),
+   new THREE.LineBasicMaterial({color:0x000000})
+ );
  record.edge.userData.shapeRecord=record;
  surface.add(record.edge);
 
- // Only the actual right perimeter is an adjustment handle.
- const rightX=Math.min(right,surfaceRight);
+ // The handle remains on the right boundary selected by the user.
+ const rightX=right;
  const lineGeo=new THREE.BufferGeometry().setFromPoints([
    new THREE.Vector3(rightX,-h/2+inset,.251),
    new THREE.Vector3(rightX,h/2-inset,.251)
@@ -379,17 +382,30 @@ function rebuildSurface(surface){
 function addPolygonToSurface(surface,shapeName){
  if(!surface||surface.userData.noPolygons)return;
  const records=polygonRecords.get(surface)||[];
- if(records.length>=5||!polygonOrientation)return;
+ const orientation=surfaceOrientations.get(surface);
+ if(records.length>=5||!orientation)return;
+
  const minUnit=1/5;
  const start=records.length?records[records.length-1].end:0;
  const end=Math.min(1,start+minUnit);
- if(end<=start)return;
- const record={surface,index:records.length,start,end,shapeName,orientation:surfaceOrientations.get(surface)||'right',color:0xd9f5f5,texture:null};
+ if(end-start<minUnit-1e-9)return;
+
+ const record={
+   surface,
+   index:records.length,
+   start,
+   end,
+   shapeName,
+   orientation,
+   color:0xd9f5f5,
+   texture:null
+ };
  records.push(record);
  polygonRecords.set(surface,records);
- selectedTarget=null;
+
  rebuildShape(record);
  selectedTarget=record.mesh;
+ selectedSurface=surface;
  polygonMenu.classList.remove('open');
  updatePolygonStatus();
 }
@@ -408,17 +424,33 @@ function updateDraggedShape(e){
  if(!draggingHandle)return;
  const p=surfaceIntersection(e,draggingHandle.surface);
  if(!p)return;
- targetSpeed=0; targetPitch=0;
- const surface=draggingHandle.surface,records=polygonRecords.get(surface)||[],record=draggingHandle.record;
- const i=record.index,minUnit=1/5;
+ targetSpeed=0;targetPitch=0;
+
+ const surface=draggingHandle.surface;
+ const records=polygonRecords.get(surface)||[];
+ const record=draggingHandle.record;
+ const i=record.index;
+ const minUnit=1/5;
+
  const minEnd=record.start+minUnit;
- const maxEnd=i<records.length-1 ? records[i+1].end-minUnit : 1;
- record.end=Math.max(minEnd,Math.min(maxEnd,(p.x+surface.userData.width/2)/surface.userData.width));
+ const maxEnd=i<records.length-1
+   ? records[i+1].end-minUnit
+   : 1;
+
+ record.end=Math.max(
+   minEnd,
+   Math.min(maxEnd,(p.x+surface.userData.width/2)/surface.userData.width)
+ );
+
+ // Preserve each later shape's width, but move its left boundary to
+ // the immediately preceding shape's right boundary. This makes the
+ // whole sequence a dynamically connected chain.
  for(let j=i+1;j<records.length;j++){
-   const width=records[j].end-records[j].start;
+   const width=Math.max(minUnit,records[j].end-records[j].start);
    records[j].start=records[j-1].end;
-   records[j].end=Math.min(1,records[j].start+Math.max(minUnit,width));
+   records[j].end=Math.min(1,records[j].start+width);
  }
+
  rebuildSurface(surface);
  selectedTarget=record.mesh;
  updatePolygonStatus();
