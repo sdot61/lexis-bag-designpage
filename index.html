@@ -304,6 +304,16 @@ function rebuildShape(record){
  }
  record.mesh.position.z=.171;
  surface.add(record.mesh);
+ if(record.edge)surface.remove(record.edge);
+ const edgePoints=[
+   new THREE.Vector3(left+span*t[0],-h/2+inset,.179),
+   new THREE.Vector3(left+span*t[1],-h/2+inset,.179),
+   new THREE.Vector3(left+span*t[3]+slant,h/2-inset,.179),
+   new THREE.Vector3(left+span*t[2]+slant,h/2-inset,.179),
+   new THREE.Vector3(left+span*t[0],-h/2+inset,.179)
+ ];
+ record.edge=new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgePoints),new THREE.LineBasicMaterial({color:0x000000}));
+ surface.add(record.edge);
  const lineMat=new THREE.LineBasicMaterial({color:0x000000});
  const lineGeo=new THREE.BufferGeometry().setFromPoints([
    new THREE.Vector3(right,-h/2+inset,.178),
@@ -313,6 +323,7 @@ function rebuildShape(record){
  record.handle.userData.shapeRecord=record;
  record.handle.userData.isShapeHandle=true;
  surface.add(record.handle);
+ record.edge.userData.shapeRecord=record;
 }
 function rebuildSurface(surface){
  const records=polygonRecords.get(surface)||[];
@@ -331,6 +342,7 @@ function addPolygonToSurface(surface,shapeName){
  polygonRecords.set(surface,records);
  selectedTarget=null;
  rebuildShape(record);
+ selectedTarget=record.mesh;
  polygonMenu.classList.remove('open');
  updatePolygonStatus();
 }
@@ -433,7 +445,7 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
  e.stopPropagation();
  if(!selectedSurface||selectedSurface.userData.noPolygons)return;
  const records=polygonRecords.get(selectedSurface)||[];
- records.forEach(r=>{if(r.mesh)selectedSurface.remove(r.mesh);if(r.handle)selectedSurface.remove(r.handle)});
+ records.forEach(r=>{if(r.mesh)selectedSurface.remove(r.mesh);if(r.handle)selectedSurface.remove(r.handle);if(r.edge)selectedSurface.remove(r.edge)});
  polygonRecords.delete(selectedSurface);
  polygonOrientation=null;selectedTarget=null;
  document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=false;x.classList.remove('active')});
@@ -452,7 +464,7 @@ deleteShapeButton.addEventListener('click',e=>{
    if(i===0)r.start=0;
    else r.start=records[i-1].end;
  });
- records.forEach(r=>{if(r.mesh)record.surface.remove(r.mesh);if(r.handle)record.surface.remove(r.handle)});
+ records.forEach(r=>{if(r.mesh)record.surface.remove(r.mesh);if(r.handle)record.surface.remove(r.handle);if(r.edge)record.surface.remove(r.edge)});
  rebuildSurface(record.surface);
  selectedSurface=record.surface;selectedTarget=null;
  updatePolygonStatus();
