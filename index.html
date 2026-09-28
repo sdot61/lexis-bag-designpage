@@ -272,6 +272,10 @@ function updatePolygonStatus(){
  deleteShapeButton.classList.toggle('visible',!!selectedTarget?.userData?.shapeRecord);
  if(records.length>=5) polygonPickerToggle.textContent='Maximum reached';
  else polygonPickerToggle.innerHTML='Choose Shape <span>▾</span>';
+ document.querySelectorAll('.orientation-option').forEach(x=>{
+   x.disabled=!!polygonOrientation||records.length>0;
+   x.classList.toggle('active',x.dataset.orientation===polygonOrientation);
+ });
 }
 const shapeTemplates={
  slight:.06,
@@ -289,7 +293,7 @@ function rebuildShape(record){
  const right=record.end*w-w/2-inset;
  const span=Math.max(.0001,right-left);
  const magnitude=Math.min(span*.38,w*.12)*(orientation==='right'?1:-1);
- const bottomShift=polygonOrientation==='right'?magnitude:-magnitude;
+ const bottomShift=orientation==='right'?magnitude:-magnitude;
  const topShift=bottomShift;
  // Build the intended parallelogram, then clip it to the actual surface rectangle.
  const raw=[
