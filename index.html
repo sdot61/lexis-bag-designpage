@@ -1,377 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Design | Lexi's Tree Fort</title>
-  
-  <link rel="icon" sizes="192x192" href="https://static.wixstatic.com/media/9a6a14_328588a7a3164b9e933af5b16a632ddb~mv2.jpg/v1/fill/w_192,h_192,lg_1,usm_0.66_1.00_0.01/9a6a14_328588a7a3164b9e933af5b16a632ddb~mv2.jpg" type="image/jpeg"/>
-
-  <style>
-    :root {
-      --ltf-teal: #1bb5b2;
-      --ltf-pink: #f06292;
-      --ltf-darkpink: #e91e63;
-      --ltf-yellow: #fcd34d;
-      --ltf-orange: #fb923c;
-      --ltf-purple: #c084fc;
-      --ltf-dark: #222222;
-      --site-width: 980px;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-      background-color: #ffffff;
-      color: var(--ltf-dark);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .site-animation {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 0;
-      pointer-events: none;
-      opacity: 1;
-    }
-
-    /* ========================================================
-       CASCADING BACKGROUND SHAPES
-       ======================================================== */
-    .shape-layer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-      overflow: hidden;
-    }
-
-    .shape {
-      position: absolute;
-      opacity: 0.85;
-      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.04));
-    }
-
-    /* Cascading shapes down the left & right sides */
-    .shape-1 { top: 60px; left: -40px; width: 180px; height: 160px; fill: var(--ltf-teal); transform: rotate(-15deg); }
-    .shape-2 { top: 180px; right: -30px; width: 200px; height: 220px; fill: var(--ltf-pink); transform: rotate(20deg); }
-    .shape-3 { top: 380px; left: 2%; width: 140px; height: 150px; fill: var(--ltf-yellow); transform: rotate(45deg); opacity: 0.7; }
-    .shape-4 { top: 520px; right: 4%; width: 160px; height: 170px; fill: var(--ltf-teal); transform: rotate(-25deg); opacity: 0.75; }
-    .shape-5 { top: 720px; left: -20px; width: 170px; height: 190px; fill: var(--ltf-orange); transform: rotate(12deg); opacity: 0.7; }
-    .shape-6 { top: 860px; right: -20px; width: 190px; height: 180px; fill: var(--ltf-purple); transform: rotate(-18deg); opacity: 0.65; }
-    .shape-7 { top: 1040px; left: 3%; width: 150px; height: 150px; fill: var(--ltf-pink); transform: rotate(35deg); opacity: 0.6; }
-
-    /* ========================================================
-       TOP HEADER & NAVIGATION
-       ======================================================== */
-    header {
-      position: relative;
-      z-index: 10;
-      width: 100%;
-      text-align: center;
-      padding-top: 18px;
-    }
-
-    .nav-bar {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 14px;
-      margin-top: 12px;
-      margin-bottom: 24px;
-      transform: translateX(-170px);
-    }
-
-    .nav-bar a {
-      display: inline-block;
-      padding: 8px 18px;
-      color: #ffffff;
-      background: #1bb5b2;
-      border: 2px solid #1bb5b2;
-      border-radius: 999px;
-      text-decoration: none;
-      font-size: 16px;
-      font-weight: 400;
-      letter-spacing: 0;
-      line-height: 1.2;
-      transition: background-color 0.2s, color 0.2s;
-    }
-
-    .nav-bar a:first-child {
-      background: #9b5de5;
-      border-color: #9b5de5;
-    }
-
-    .nav-bar a:first-child:hover,
-    .nav-bar a:first-child.active {
-      background: #9b5de5;
-      border-color: #9b5de5;
-    }
-
-    .nav-bar a:not(:first-child):hover,
-    .nav-bar a:not(:first-child).active {
-      color: #ffffff;
-      background: #1bb5b2;
-      border-color: #1bb5b2;
-    }
-
-    .nav-dot {
-      display: none;
-    }
-
-    /* Sign Foam Board Header Image */
-    .header-banner {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 18px;
-    }
-
-
-    .header-banner img {
-      max-width: 150px;
-      width: 40%;
-      height: auto;
-      border-radius: 0;
-      box-shadow: none;
-    }
-
-    /* LTF Logo Badge & Etsy Button */
-
-
-
-
-    /* ========================================================
-       WHITE SPACE BODY / WORKSPACE AREA
-       ======================================================== */
-    main {
-      position: relative;
-      z-index: 10;
-      flex: 1;
-      width: 100%;
-      max-width: 1180px;
-      margin: 10px auto 70px auto;
-      padding: 0 20px;
-    }
-
-    .white-workspace {
-      background-color: #ffffff;
-      min-height: 820px;
-      width: 100%;
-      padding: 45px 35px;
-      border: none;
-      box-shadow: none;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      text-align: center;
-    }
-
-    .workspace-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: 1px;
-      color: #333333;
-      margin-bottom: 34px;
-      text-transform: uppercase;
-    }
-
-    .designer-layout {
-      width: 100%;
-      max-width: 1160px;
-      display: grid;
-      grid-template-columns: 190px minmax(520px, 1fr) 190px;
-      gap: 24px;
-      align-items: stretch;
-    }
-
-    .designer-side {
-      min-height: 650px;
-      border: 2px solid #000000;
-      border-radius: 18px;
-      background: #ffffff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    .designer-main {
-      min-height: 650px;
-      border: 2px solid #000000;
-      border-radius: 0;
-      background: #ffffff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    @media (max-width: 900px) {
-      .designer-layout {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .designer-main {
-        grid-column: 1 / -1;
-        grid-row: 1;
-      }
-
-      .designer-side {
-        min-height: 180px;
-      }
-    }
-
-    @media (max-width: 560px) {
-      .nav-bar {
-        flex-wrap: wrap;
-        padding: 0 12px;
-      }
-
-      .designer-layout {
-        grid-template-columns: 1fr;
-      }
-
-      .designer-main {
-        grid-column: auto;
-      }
-
-      .designer-side {
-        min-height: 160px;
-      }
-    }
-
-    /* ========================================================
-       FOOTER
-       ======================================================== */
-    footer {
-      position: relative;
-      z-index: 10;
-      width: 100%;
-      text-align: center;
-      padding: 30px 20px 40px 20px;
-      font-size: 0.85rem;
-      color: #666666;
-    }
-
-    .social-links {
-      display: flex;
-      justify-content: center;
-      gap: 18px;
-      margin-bottom: 14px;
-    }
-
-    .social-links a {
-      color: #444444;
-      text-decoration: none;
-      font-size: 0.85rem;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
-
-    .social-links a:hover {
-      color: var(--ltf-teal);
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Design | Lexi's Tree Fort</title>
+<style>
+:root{--teal:#1bb5b2;--purple:#9b5de5;--ink:#000;--hover:#d9f5f5}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;color:#222}body{background:#fff}
+.site-animation{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none}
+header,main,footer{position:relative;z-index:2}
+header{text-align:center;padding-top:18px}
+.nav-bar{display:flex;justify-content:center;align-items:center;gap:14px;margin:12px 0 24px;transform:translateX(-170px)}
+.nav-bar a{padding:8px 18px;color:#fff;background:var(--teal);border:2px solid var(--teal);border-radius:999px;text-decoration:none;font-size:16px;line-height:1.2;font-weight:400}
+.nav-bar a:first-child{background:var(--purple);border-color:var(--purple)}
+.nav-bar a:hover{filter:brightness(.95)}
+.header-banner{margin-bottom:18px}.header-banner img{max-width:150px;width:40%;height:auto}
+main{width:100%;max-width:1180px;margin:10px auto 70px;padding:0 20px}
+.white-workspace{background:#fff;min-height:820px;padding:45px 35px;display:flex;flex-direction:column;align-items:center}
+.workspace-title{font-size:1.5rem;font-weight:700;letter-spacing:1px;color:#333;margin:0 0 34px;text-transform:uppercase}
+.designer-layout{width:100%;max-width:1160px;display:grid;grid-template-columns:190px minmax(520px,1fr) 190px;gap:24px;align-items:stretch}
+.designer-side,.designer-main{min-height:650px;background:#fff;border:2px solid #000;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.designer-side{border-radius:18px;padding:28px 20px;text-align:left}.designer-main{border-radius:0;position:relative;overflow:hidden}
+.panel-title{font-size:16px;font-weight:700;margin:0 0 22px}.bag-choice{border:0;background:none;padding:0;font:inherit;font-size:16px;color:#222;cursor:pointer;text-align:left}.bag-choice:hover{text-decoration:underline}
+.panel-rule{border:0;border-top:2px dashed #000;margin:24px 0}
+.size-options{display:flex;flex-direction:column;gap:12px}.size-option{border:0;background:none;padding:0;font:inherit;font-size:15px;text-align:left;cursor:pointer}.size-option:hover{text-decoration:underline}.size-option.active{font-weight:700}
+.color-title{font-size:15px;margin:0 0 16px}.swatch-list{display:flex;flex-direction:column;gap:14px}.swatch{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font:inherit;font-size:14px;cursor:pointer;text-align:left}.smudge{width:34px;height:26px;display:inline-block;border-radius:55% 42% 62% 38% / 48% 58% 42% 52%;transform:rotate(-7deg);box-shadow:inset 4px 2px 0 rgba(255,255,255,.22),inset -3px -2px 0 rgba(0,0,0,.08)}
+.smudge.teal{background:#1bb5b2}.smudge.white{background:#fff;border:1px solid #aaa}.smudge.pink{background:#f06292}.smudge.purple{background:#9b5de5}.smudge.black{background:#111}
+#scene{width:100%;height:100%;min-height:650px;display:block}.designer-main:before{content:"";position:absolute;left:12%;right:12%;bottom:7%;height:1px;background:rgba(0,0,0,.06)}
+.bag-hint{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:#777;pointer-events:none}
+footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.social-links{display:flex;justify-content:center;gap:18px;margin-bottom:14px}.social-links a{color:#444;text-decoration:none;font-weight:600}
+@media(max-width:900px){.nav-bar{transform:none;flex-wrap:wrap}.designer-layout{grid-template-columns:1fr 1fr}.designer-main{grid-column:1/-1;grid-row:1}.designer-side{min-height:180px}}
+@media(max-width:560px){.designer-layout{grid-template-columns:1fr}.designer-main{grid-column:auto}.designer-side{min-height:160px}}
+</style>
 </head>
 <body>
-
-  <video class="site-animation" autoplay muted loop playsinline aria-hidden="true">
-    <source src="https://video.wixstatic.com/video/11062b_2ed9e9ea388343a59c387bccf3539098/1080p/mp4/file.mp4" type="video/mp4">
-  </video>
-
-<!-- SITE HEADER & NAV -->
-  <header>
-    <!-- Navigation Links -->
-    <nav class="nav-bar">
-      <a href="https://www.lexistreefort.com/">Home</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/shop-1">Shop</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/about">About</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/events">Events</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/contact">Contact</a>
-    </nav>
-
-    <!-- Site logo -->
-    <div class="header-banner">
-      <img src="https://static.wixstatic.com/media/9a6a14_b0a7629f76d040879556d83d4db846db~mv2.jpg/v1/crop/x_5,y_0,w_604,h_672/fill/w_150,h_167,al_c,q_80,usm_0.66_1.00_0.01/LTF_logoTealPink.jpg" alt="Lexi's Tree Fort">
-    </div>
-  </header>
-
-  <!-- BODY CONTENT: CLEAN WHITE SPACE WORKSPACE -->
-  <main>
-    <div class="white-workspace">
-      <h1 class="workspace-title">Custom Bag Designer</h1>
+<video class="site-animation" autoplay muted loop playsinline aria-hidden="true"><source src="https://video.wixstatic.com/video/11062b_2ed9e9ea388343a59c387bccf3539098/1080p/mp4/file.mp4" type="video/mp4"></video>
+<header>
+<nav class="nav-bar">
+<a href="https://www.lexistreefort.com/">Home</a><a href="https://www.lexistreefort.com/shop-1">Shop</a><a href="https://www.lexistreefort.com/about">About</a><a href="https://www.lexistreefort.com/events">Events</a><a href="https://www.lexistreefort.com/contact">Contact</a>
+</nav>
+<div class="header-banner"><img src="https://static.wixstatic.com/media/9a6a14_b0a7629f76d040879556d83d4db846db~mv2.jpg/v1/crop/x_5,y_0,w_604,h_672/fill/w_150,h_167,al_c,q_80,usm_0.66_1.00_0.01/LTF_logoTealPink.jpg" alt="Lexi's Tree Fort"></div>
+</header>
+<main><div class="white-workspace">
+<h1 class="workspace-title">Custom Bag Designer</h1>
 <div class="designer-layout">
-        <aside class="designer-side" aria-label="Left design controls"></aside>
-        <section class="designer-main" aria-label="Bag design workspace"></section>
-        <aside class="designer-side" aria-label="Right design controls"></aside>
-      </div>
-    </div>
-  </main>
+<aside class="designer-side">
+<h2 class="panel-title">Bags</h2>
+<button class="bag-choice" id="messengerButton">Messenger Bag</button>
+</aside>
+<section class="designer-main" id="designer">
+<canvas id="scene"></canvas><div class="bag-hint">Move toward either edge to rotate · move back over the bag to inspect surfaces</div>
+</section>
+<aside class="designer-side">
+<h2 class="panel-title">Size</h2>
+<div class="size-options"><button class="size-option active">Small</button><button class="size-option">Medium</button><button class="size-option">Large</button></div>
+<hr class="panel-rule">
+<h3 class="color-title">Colors</h3>
+<div class="swatch-list">
+<button class="swatch" data-color="#1bb5b2"><span class="smudge teal"></span>Teal</button>
+<button class="swatch" data-color="#ffffff"><span class="smudge white"></span>White</button>
+<button class="swatch" data-color="#f06292"><span class="smudge pink"></span>Hot Pink</button>
+<button class="swatch" data-color="#9b5de5"><span class="smudge purple"></span>Purple</button>
+<button class="swatch" data-color="#111111"><span class="smudge black"></span>Black</button>
+</div>
+</aside>
+</div></div></main>
+<footer><div class="social-links"><a href="https://www.instagram.com/lexistreefort/" target="_blank">Instagram</a><a href="https://www.facebook.com/lexistreefort/" target="_blank">Facebook</a></div><p>&copy; 2026 by Lexi's Tree Fort.</p></footer>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
-  <!-- SITE FOOTER -->
-  <footer>
-    <div class="social-links">
-      <a href="https://www.instagram.com/lexistreefort/" target="_blank">Instagram</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.facebook.com/lexistreefort/" target="_blank">Facebook</a>
-    </div>
-    <p>&copy; 2026 by Lexi's Tree Fort.</p>
-  </footer>
+const canvas=document.getElementById('scene'), host=document.getElementById('designer');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(host.clientWidth,host.clientHeight,false);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xffffff);
+const camera=new THREE.PerspectiveCamera(28,host.clientWidth/host.clientHeight,.1,100); camera.position.set(5.7,3.4,7.2);
+const controls=new OrbitControls(camera,canvas); controls.enableDamping=true; controls.enablePan=false; controls.minDistance=5; controls.maxDistance=10; controls.target.set(0,1,0); controls.minPolarAngle=.75; controls.maxPolarAngle=2.2;
 
-</body>
-</html>  <!-- SITE HEADER & NAV -->
-  <header>
-    <nav class="nav-bar">
-      <a href="https://www.lexistreefort.com/">Home</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/shop-1">Shop</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/about">About</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/events">Events</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/contact">Contact</a>
-    </nav>
+scene.add(new THREE.HemisphereLight(0xffffff,0xffffff,2));
+const group=new THREE.Group(); group.visible=false; scene.add(group);
 
-    <div class="header-banner">
-      <img src="https://static.wixstatic.com/media/9a6a14_b0a7629f76d040879556d83d4db846db~mv2.jpg/v1/crop/x_5,y_0,w_604,h_672/fill/w_150,h_167,al_c,q_80,usm_0.66_1.00_0.01/LTF_logoTealPink.jpg" alt="Lexi's Tree Fort">
-    </div>
-  </header>
-  <!-- BODY CONTENT: CLEAN WHITE SPACE WORKSPACE -->
-  <main>
-    <div class="white-workspace">
-      <h1 class="workspace-title">Custom Bag Designer</h1>
-<div class="designer-layout">
-        <aside class="designer-side" aria-label="Left design controls"></aside>
-        <section class="designer-main" aria-label="Bag design workspace"></section>
-        <aside class="designer-side" aria-label="Right design controls"></aside>
-      </div>
-    </div>
-  </main>
+const surfaces=[];
+const mat=(color='#ffffff',hover=false)=>new THREE.MeshBasicMaterial({color:hover?'#d9f5f5':color,side:THREE.DoubleSide});
+function panel(name,w,h,d,position,rotation=[0,0,0]){
+ const geo=new THREE.BoxGeometry(w,h,d); const mesh=new THREE.Mesh(geo,mat()); mesh.position.set(...position); mesh.rotation.set(...rotation); mesh.userData.surface=name;
+ const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:0x000000,linewidth:1})); edges.position.copy(mesh.position); edges.rotation.copy(mesh.rotation); edges.scale.set(1.002,1.002,1.002); group.add(mesh,edges); surfaces.push(mesh); return mesh;
+}
+// A simple messenger bag: continuous box contours plus a hinged flap and strap.
+panel('front',4.5,3.0,.28,[0,1.55,0]);
+panel('back',4.5,3.0,.28,[0,1.55,-1.95]);
+panel('side 1',.28,3.0,1.95,[-2.11,1.55,-.98]);
+panel('side 2',.28,3.0,1.95,[2.11,1.55,-.98]);
+panel('bottom',4.5,.28,1.95,[0,.12,-.98]);
+const flapGeo=new THREE.BoxGeometry(4.5,1.55,.28); const flap=new THREE.Mesh(flapGeo,mat()); flap.position.set(0,3.75,-.05); flap.rotation.x=-.18; flap.userData.surface='front cover'; group.add(flap); surfaces.push(flap);
+const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flapGeo),new THREE.LineBasicMaterial({color:0x000000})); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation); group.add(flapEdges);
+const strapCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(-2.0,3.5,-.3),new THREE.Vector3(-3.0,5.0,-.8),new THREE.Vector3(0,5.8,-1.1),new THREE.Vector3(3.0,5.0,-.8),new THREE.Vector3(2.0,3.5,-.3)]);
+const strap=new THREE.Line(new THREE.BufferGeometry().setFromPoints(strapCurve.getPoints(48)),new THREE.LineBasicMaterial({color:0x000000})); group.add(strap);
+group.position.y=-1.15; group.rotation.y=-.35;
 
-  <!-- SITE FOOTER -->
-  <footer>
-    <div class="social-links">
-      <a href="https://www.instagram.com/lexistreefort/" target="_blank">Instagram</a>
-      <span class="nav-dot">·</span>
-      <a href="https://www.facebook.com/lexistreefort/" target="_blank">Facebook</a>
-    </div>
-    <p>&copy; 2026 by Lexi's Tree Fort.</p>
-  </footer>
-
-</body>
-</html>
+const ray=new THREE.Raycaster(), pointer=new THREE.Vector2(); let hovered=null; let edgeDir=0; let targetSpeed=0;
+function setHover(obj,on){if(!obj)return; obj.material.color.set(on?'#d9f5f5':'#ffffff')}
+function pointerMove(e){const r=canvas.getBoundingClientRect(); pointer.x=((e.clientX-r.left)/r.width)*2-1; pointer.y=-((e.clientY-r.top)/r.height)*2+1; const x=(e.clientX-r.left)/r.width; edgeDir=x<.16?1:x>.84?-1:0; targetSpeed=edgeDir*(Math.max(0,Math.abs(x-.5)-.34)/.16)*.025; ray.setFromCamera(pointer,camera); const hit=ray.intersectObjects(surfaces,false)[0]?.object; if(hit!==hovered){setHover(hovered,false);hovered=hit||null;setHover(hovered,true);}}
+canvas.addEventListener('pointermove',pointerMove); canvas.addEventListener('pointerleave',()=>{setHover(hovered,false);hovered=null;edgeDir=0;targetSpeed=0});
+canvas.addEventListener('click',()=>{if(hovered) hovered.userData.selected=true});
+document.getElementById('messengerButton').addEventListener('click',()=>{group.visible=true});
+document.querySelectorAll('.size-option').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.size-option').forEach(x=>x.classList.remove('active'));b.classList.add('active');}));
+document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{if(hovered){hovered.material.color.set(b.dataset.color)}}));
+function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()} addEventListener('resize',resize);
+function animate(){requestAnimationFrame(animate);group.rotation.y+=targetSpeed;controls.update();renderer.render(scene,camera)} animate();
+</script>
+</body></html>
