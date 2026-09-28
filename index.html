@@ -210,6 +210,7 @@ group.scale.set(.78,.78,.78); group.position.y=-.35; group.rotation.set(0,-.28,0
 
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 let hovered=null,selectedSurface=null,selectedTarget=null,targetSpeed=0,targetPitch=0,polygonOrientation=null;
+const surfaceOrientations=new Map();
 let draggingHandle=null,dragPlane=null,dragStart=null;
 ray.params.Line.threshold=.035;
 const polygonCounts=new Map();
@@ -265,8 +266,9 @@ function updatePolygonStatus(){
    deleteShapeButton.classList.remove('visible');
    return;
  }
+ polygonOrientation=surfaceOrientations.get(base)||null;
  status.textContent=base.userData.surface+' · '+records.length+'/5 shapes'+(polygonOrientation?' · '+polygonOrientation+' angle':'');
- polygonPicker.classList.toggle('visible',!!polygonOrientation&&records.length<5);
+ polygonPicker.classList.toggle('visible',records.length<5);
  deleteShapeButton.classList.toggle('visible',!!selectedTarget?.userData?.shapeRecord);
  if(records.length>=5) polygonPickerToggle.textContent='Maximum reached';
  else polygonPickerToggle.innerHTML='Choose Shape <span>▾</span>';
@@ -279,12 +281,14 @@ const shapeTemplates={
 };
 function rebuildShape(record){
  const surface=record.surface, w=surface.userData.width,h=surface.userData.height;
+ const orientation=record.orientation||surfaceOrientations.get(surface)||'right';
  const inset=Math.min(.045,w*.02,h*.02);
  const surfaceLeft=-w/2+inset, surfaceRight=w/2-inset;
+ const allocationLeft=left, allocationRight=right;
  const left=record.start*w-w/2+inset;
  const right=record.end*w-w/2-inset;
  const span=Math.max(.0001,right-left);
- const magnitude=Math.min(span*.38,w*.12)*(polygonOrientation==='right'?1:-1);
+ const magnitude=Math.min(span*.38,w*.12)*(orientation==='right'?1:-1);
  const bottomShift=polygonOrientation==='right'?magnitude:-magnitude;
  const topShift=bottomShift;
  // Build the intended parallelogram, then clip it to the actual surface rectangle.
@@ -317,8 +321,8 @@ function rebuildShape(record){
    return out;
  }
  let clipped=raw;
- clipped=clip(clipped,'x',surfaceLeft,true);
- clipped=clip(clipped,'x',surfaceRight,false);
+ clipped=clip(clipped,'x',Math.max(surfaceLeft,allocationLeft),true);
+ clipped=clip(clipped,'x',Math.min(surfaceRight,allocationRight),false);
  clipped=clip(clipped,'y',-h/2+inset,true);
  clipped=clip(clipped,'y',h/2-inset,false);
  if(clipped.length<3)return;
@@ -376,7 +380,7 @@ function addPolygonToSurface(surface,shapeName){
  const start=records.length?records[records.length-1].end:0;
  const end=Math.min(1,start+minUnit);
  if(end<=start)return;
- const record={surface,index:records.length,start,end,shapeName,color:0xd9f5f5,texture:null};
+ const record={surface,index:records.length,start,end,shapeName,orientation:surfaceOrientations.get(surface)||'right',color:0xd9f5f5,texture:null};
  records.push(record);
  polygonRecords.set(surface,records);
  selectedTarget=null;
@@ -441,6 +445,7 @@ canvas.addEventListener('pointerdown',e=>{
  if(h?.userData?.isShapeHandle){
    const record=h.userData.shapeRecord;
    targetSpeed=0; targetPitch=0;
+   controls.enabled=false;
    draggingHandle={record,surface:record.surface};
    selectedSurface=record.surface;selectedTarget=record.mesh;
    canvas.setPointerCapture(e.pointerId);
@@ -449,15 +454,21 @@ canvas.addEventListener('pointerdown',e=>{
  }
 });
 canvas.addEventListener('pointerup',e=>{
- if(draggingHandle){draggingHandle=null;canvas.releasePointerCapture(e.pointerId);canvas.classList.remove('shape-cursor')}
+ if(draggingHandle){draggingHandle=null;controls.enabled=true;canvas.releasePointerCapture(e.pointerId);canvas.classList.remove('shape-cursor')}
 });
 canvas.addEventListener('click',e=>{
  if(draggingHandle)return;
  const r=canvas.getBoundingClientRect();
  ray.setFromCamera(new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-(((e.clientY-r.top)/r.height)*2-1)),camera);
- const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
+ const hits=ray.intersectObjects(surfaces,true);
+ const shapeHit=hits.find(x=>x.object?.userData?.shapeRecord)?.object||null;
+ const hit=shapeHit||hits[0]?.object||null;
  if(hit?.userData?.isRightHandle)return;
- if(hit)openSurfaceTool(baseSurface(hit),hit,e.clientX,e.clientY);
+ if(hit){
+   const base=baseSurface(hit);
+   selectedTarget=hit;
+   openSurfaceTool(base,hit,e.clientX,e.clientY);
+ }
 });
 canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0;targetPitch=0;canvas.classList.remove('shape-cursor')});
 polygonPickerToggle.addEventListener('click',e=>{e.stopPropagation();polygonMenu.classList.toggle('open')});
@@ -479,9 +490,11 @@ document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
 }));
 document.querySelectorAll('.orientation-option').forEach(b=>b.addEventListener('click',e=>{
  e.stopPropagation();
- if(polygonOrientation)return;
  if(!selectedSurface||selectedSurface.userData.noPolygons)return;
+ const records=polygonRecords.get(selectedSurface)||[];
+ if(records.length)return;
  polygonOrientation=b.dataset.orientation;
+ surfaceOrientations.set(selectedSurface,polygonOrientation);
  document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=true;x.classList.toggle('active',x===b)});
  updatePolygonStatus();
 }));
@@ -491,6 +504,7 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
  const records=polygonRecords.get(selectedSurface)||[];
  records.forEach(r=>{if(r.mesh)selectedSurface.remove(r.mesh);if(r.handle)selectedSurface.remove(r.handle);if(r.edge)selectedSurface.remove(r.edge)});
  polygonRecords.delete(selectedSurface);
+ surfaceOrientations.delete(selectedSurface);
  polygonOrientation=null;selectedTarget=null;
  document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=false;x.classList.remove('active')});
  updatePolygonStatus();
@@ -511,6 +525,7 @@ deleteShapeButton.addEventListener('click',e=>{
  records.forEach(r=>{if(r.mesh)record.surface.remove(r.mesh);if(r.handle)record.surface.remove(r.handle);if(r.edge)record.surface.remove(r.edge)});
  rebuildSurface(record.surface);
  selectedSurface=record.surface;selectedTarget=null;
+ polygonOrientation=surfaceOrientations.get(selectedSurface)||null;
  updatePolygonStatus();
 });
 document.addEventListener('click',e=>{
@@ -524,6 +539,6 @@ document.getElementById('addCart').addEventListener('click',()=>{
 });
 function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);
-function animate(){requestAnimationFrame(animate);const shapeMode=!!polygonOrientation||!!draggingHandle;if(shapeMode){targetSpeed=0;targetPitch=0}group.rotation.y+=shapeMode?0:targetSpeed;group.rotation.x=Math.max(-.95,Math.min(.95,group.rotation.x+(shapeMode?0:targetPitch)));controls.update();renderer.render(scene,camera)} animate();
+function animate(){requestAnimationFrame(animate);const shapeMode=!!polygonOrientation||!!draggingHandle||!controls.enabled;if(shapeMode){targetSpeed=0;targetPitch=0}group.rotation.y+=shapeMode?0:targetSpeed;group.rotation.x=Math.max(-.95,Math.min(.95,group.rotation.x+(shapeMode?0:targetPitch)));controls.update();renderer.render(scene,camera)} animate();
 </script>
 </body></html>
