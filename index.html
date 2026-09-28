@@ -280,18 +280,57 @@ const shapeTemplates={
 function rebuildShape(record){
  const surface=record.surface, w=surface.userData.width,h=surface.userData.height;
  const inset=Math.min(.045,w*.02,h*.02);
+ const surfaceLeft=-w/2+inset, surfaceRight=w/2-inset;
  const left=record.start*w-w/2+inset;
  const right=record.end*w-w/2-inset;
  const span=Math.max(.0001,right-left);
- const slant=Math.min(span*.38,w*.12)*(polygonOrientation==='right'?1:-1);
+ const magnitude=Math.min(span*.38,w*.12)*(polygonOrientation==='right'?1:-1);
+ const bottomShift=polygonOrientation==='right'?magnitude:-magnitude;
+ const topShift=bottomShift;
+ // Build the intended parallelogram, then clip it to the actual surface rectangle.
+ const raw=[
+   new THREE.Vector2(left,-h/2+inset),
+   new THREE.Vector2(right,-h/2+inset),
+   new THREE.Vector2(right+topShift,h/2-inset),
+   new THREE.Vector2(left+topShift,h/2-inset)
+ ];
+ const rect=new THREE.Shape();
+ rect.moveTo(surfaceLeft,-h/2+inset);
+ rect.lineTo(surfaceRight,-h/2+inset);
+ rect.lineTo(surfaceRight,h/2-inset);
+ rect.lineTo(surfaceLeft,h/2-inset);
+ rect.closePath();
+ const poly=new THREE.Path(raw.map((p,i)=>i===0?new THREE.Vector2(p.x,p.y):new THREE.Vector2(p.x,p.y)));
+ // Sutherland-Hodgman clipping against the surface rectangle.
+ function clip(points,axis,value,keepGreater){
+   const out=[];
+   for(let i=0;i<points.length;i++){
+     const P=points[i],Q=points[(i+1)%points.length];
+     const pIn=keepGreater?(P[axis]>=value):(P[axis]<=value);
+     const qIn=keepGreater?(Q[axis]>=value):(Q[axis]<=value);
+     if(pIn!==qIn){
+       const t=(value-P[axis])/(Q[axis]-P[axis]);
+       out.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
+     }
+     if(qIn)out.push(Q.clone());
+   }
+   return out;
+ }
+ let clipped=raw;
+ clipped=clip(clipped,'x',surfaceLeft,true);
+ clipped=clip(clipped,'x',surfaceRight,false);
+ clipped=clip(clipped,'y',-h/2+inset,true);
+ clipped=clip(clipped,'y',h/2-inset,false);
+ if(clipped.length<3)return;
  const shape=new THREE.Shape();
- shape.moveTo(left,-h/2+inset);
- shape.lineTo(right,-h/2+inset);
- shape.lineTo(right+slant,h/2-inset);
- shape.lineTo(left+slant,h/2-inset);
+ shape.moveTo(clipped[0].x,clipped[0].y);
+ clipped.slice(1).forEach(p=>shape.lineTo(p.x,p.y));
  shape.closePath();
+
  if(record.mesh)surface.remove(record.mesh);
  if(record.handle)surface.remove(record.handle);
+ if(record.edge)surface.remove(record.edge);
+
  record.mesh=new THREE.Mesh(
    new THREE.ShapeGeometry(shape),
    new THREE.MeshBasicMaterial({color:record.color||0xd9f5f5,side:THREE.DoubleSide})
@@ -306,25 +345,23 @@ function rebuildShape(record){
  }
  record.mesh.position.z=.24;
  surface.add(record.mesh);
- if(record.edge)surface.remove(record.edge);
- const edgePoints=[
-   new THREE.Vector3(left,-h/2+inset,.249),
-   new THREE.Vector3(right,-h/2+inset,.249),
-   new THREE.Vector3(right+slant,h/2-inset,.249),
-   new THREE.Vector3(left+slant,h/2-inset,.249),
-   new THREE.Vector3(left,-h/2+inset,.249)
- ];
+
+ const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,.249));
+ edgePoints.push(edgePoints[0].clone());
  record.edge=new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgePoints),new THREE.LineBasicMaterial({color:0x000000}));
  record.edge.userData.shapeRecord=record;
  surface.add(record.edge);
- const lineMat=new THREE.LineBasicMaterial({color:0x000000});
+
+ // Only the actual right perimeter is an adjustment handle.
+ const rightX=Math.min(right,surfaceRight);
  const lineGeo=new THREE.BufferGeometry().setFromPoints([
-   new THREE.Vector3(right,-h/2+inset,.251),
-   new THREE.Vector3(right,h/2-inset,.251)
+   new THREE.Vector3(rightX,-h/2+inset,.251),
+   new THREE.Vector3(rightX,h/2-inset,.251)
  ]);
- record.handle=new THREE.Line(lineGeo,lineMat);
+ record.handle=new THREE.Line(lineGeo,new THREE.LineBasicMaterial({color:0x000000}));
  record.handle.userData.shapeRecord=record;
  record.handle.userData.isShapeHandle=true;
+ record.handle.userData.isRightHandle=true;
  surface.add(record.handle);
 }
 function rebuildSurface(surface){
@@ -391,7 +428,7 @@ canvas.addEventListener('pointermove',e=>{
  ray.setFromCamera(pointer,camera);
  const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
  if(hit!==hovered){hover(hovered,false);hovered=hit;if(hovered)hover(hovered,true)}
- const handleHit=ray.intersectObjects(surfaces.flatMap(s=>(polygonRecords.get(s)||[]).map(r=>r.handle).filter(Boolean)),true)[0]?.object;
+ const handleHit=ray.intersectObjects(surfaces.flatMap(s=>(polygonRecords.get(s)||[]).map(r=>r.handle).filter(h=>h?.userData?.isRightHandle)),true)[0]?.object;
  canvas.classList.toggle('shape-cursor',!!handleHit);
 });
 canvas.addEventListener('pointerdown',e=>{
@@ -400,7 +437,7 @@ canvas.addEventListener('pointerdown',e=>{
  ray.setFromCamera(pointer,camera);
  const handles=[];
  polygonRecords.forEach(records=>records.forEach(record=>{if(record.handle)handles.push(record.handle)}));
- const h=ray.intersectObjects(handles,true)[0]?.object;
+ const h=ray.intersectObjects(handles.filter(x=>x.userData?.isRightHandle),true)[0]?.object;
  if(h?.userData?.isShapeHandle){
    const record=h.userData.shapeRecord;
    targetSpeed=0; targetPitch=0;
@@ -419,6 +456,7 @@ canvas.addEventListener('click',e=>{
  const r=canvas.getBoundingClientRect();
  ray.setFromCamera(new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-(((e.clientY-r.top)/r.height)*2-1)),camera);
  const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
+ if(hit?.userData?.isRightHandle)return;
  if(hit)openSurfaceTool(baseSurface(hit),hit,e.clientX,e.clientY);
 });
 canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0;targetPitch=0;canvas.classList.remove('shape-cursor')});
@@ -486,6 +524,6 @@ document.getElementById('addCart').addEventListener('click',()=>{
 });
 function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);
-function animate(){requestAnimationFrame(animate);group.rotation.y+=targetSpeed;group.rotation.x=Math.max(-.95,Math.min(.95,group.rotation.x+targetPitch));controls.update();renderer.render(scene,camera)} animate();
+function animate(){requestAnimationFrame(animate);const shapeMode=!!polygonOrientation||!!draggingHandle;if(shapeMode){targetSpeed=0;targetPitch=0}group.rotation.y+=shapeMode?0:targetSpeed;group.rotation.x=Math.max(-.95,Math.min(.95,group.rotation.x+(shapeMode?0:targetPitch)));controls.update();renderer.render(scene,camera)} animate();
 </script>
 </body></html>
