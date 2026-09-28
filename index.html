@@ -453,12 +453,11 @@ function addPolygonToSurface(surface,shapeName){
   if(records.length){
     leftBoundary=records[records.length-1].rightBoundary;
   }else{
-    const shift=w*(shapeTemplates[shapeName]??.085)*(orientation==='left'?-1:1);
-    // The first shape's working geometry is centered on the surface's left
-    // edge: the midpoint of its left boundary is exactly x=-w/2. The portions
-    // of that boundary outside the surface are intentionally clipped, so the
-    // surface can never appear to the left of the shape's owned edge.
-    leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
+    // The first allocation is exactly the first 1/5 of the surface width.
+    // Its left edge is the surface edge itself, rather than a slanted edge
+    // that straddles the surface. This guarantees that the first shape owns
+    // the entire leftmost unit of surface.
+    leftBoundary={bottom:-w/2,top:-w/2};
   }
 
   const shift=w*(shapeTemplates[shapeName]??.085)*(orientation==='left'?-1:1);
@@ -539,9 +538,17 @@ canvas.addEventListener('pointermove',e=>{
  const verticalEdge=Math.max(0,(Math.abs(y-.5)-.32)/.18);
  targetPitch=shapeWorkActive?0:(y<.18?-.018:y>.82?.018:0)*verticalEdge;
  ray.setFromCamera(pointer,camera);
- const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
- if(hit!==hovered){hover(hovered,false);hovered=hit;if(hovered)hover(hovered,true)}
- const handleHit=ray.intersectObjects(surfaces.flatMap(s=>(polygonRecords.get(s)||[]).map(r=>r.handle).filter(h=>h?.userData?.isWorkingHandle)),true)[0]?.object;
+ const hoverObjects=[];
+ surfaces.forEach(surface=>hoverObjects.push(surface));
+ polygonRecords.forEach(records=>records.forEach(record=>{
+   if(record.mesh)hoverObjects.push(record.mesh);
+ }));
+ const hoverHit=ray.intersectObjects(hoverObjects,false).sort((a,b)=>a.distance-b.distance)[0]?.object||null;
+ if(hoverHit!==hovered){hover(hovered,false);hovered=hoverHit;if(hovered)hover(hovered,true)}
+ const handleHit=ray.intersectObjects(
+   [...polygonRecords.values()].flat().map(r=>r.handle).filter(h=>h?.userData?.isWorkingHandle),
+   false
+ ).sort((a,b)=>a.distance-b.distance)[0]?.object;
  canvas.classList.toggle('shape-cursor',!!handleHit);
 });
 canvas.addEventListener('pointerdown',e=>{
@@ -550,7 +557,8 @@ canvas.addEventListener('pointerdown',e=>{
  ray.setFromCamera(pointer,camera);
  const handles=[];
  polygonRecords.forEach(records=>records.forEach(record=>{if(record.handle)handles.push(record.handle)}));
- const h=ray.intersectObjects(handles.filter(x=>x.userData?.isWorkingHandle),true)[0]?.object;
+ const h=ray.intersectObjects(handles.filter(x=>x.userData?.isWorkingHandle),false)
+   .sort((a,b)=>a.distance-b.distance)[0]?.object;
  if(h?.userData?.isShapeHandle){
    const record=h.userData.shapeRecord;
    targetSpeed=0; targetPitch=0;
@@ -565,16 +573,35 @@ canvas.addEventListener('pointerdown',e=>{
 canvas.addEventListener('pointerup',e=>{
  if(draggingHandle){draggingHandle=null;controls.enabled=true;canvas.releasePointerCapture(e.pointerId);canvas.classList.remove('shape-cursor')}
 });
+function foregroundHit(clientX,clientY){
+ const r=canvas.getBoundingClientRect();
+ const ndc=new THREE.Vector2(
+   ((clientX-r.left)/r.width)*2-1,
+   -(((clientY-r.top)/r.height)*2-1)
+ );
+ ray.setFromCamera(ndc,camera);
+
+ // Resolve selection from the camera outward. The first actual rendered
+ // surface or shape intersected by the ray is the only selectable object.
+ // In particular, never use selectedSurface as a fallback: a previously
+ // edited member of a front/back pair must not capture clicks on its mate.
+ const objects=[];
+ surfaces.forEach(surface=>objects.push(surface));
+ polygonRecords.forEach(records=>records.forEach(record=>{
+   if(record.mesh)objects.push(record.mesh);
+ }));
+ const hits=ray.intersectObjects(objects,false).sort((a,b)=>a.distance-b.distance);
+ for(const hit of hits){
+   const obj=hit.object;
+   if(obj?.userData?.shapeRecord)return obj;
+   if(obj?.userData?.surface)return obj;
+ }
+ return null;
+}
+
 canvas.addEventListener('click',e=>{
  if(draggingHandle)return;
- const r=canvas.getBoundingClientRect();
- ray.setFromCamera(new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-(((e.clientY-r.top)/r.height)*2-1)),camera);
- const selectable=surfaces.concat([...polygonRecords.values()].flat().map(r=>r.mesh).filter(Boolean));
- const hits=ray.intersectObjects(selectable,true);
- // Raycaster intersections are sorted nearest-first. Do not search for an
- // arbitrary shape hit: doing so could select a shape on a farther surface
- // instead of the actual surface under the cursor.
- const hit=hits[0]?.object||null;
+ const hit=foregroundHit(e.clientX,e.clientY);
  if(hit?.userData?.isWorkingHandle)return;
  if(hit){
    const base=baseSurface(hit);
