@@ -195,14 +195,14 @@ surfaces.push(hinge);
 
 // Exterior bridge surface: a separate, color-only rectangle sitting outside the bag
 // across the gap/border between the top flap and the back panel.
-const bridgeGeo=new THREE.PlaneGeometry(2.07,.86);
+const bridgeGeo=new THREE.PlaneGeometry(3.45,.86);
 const bridge=new THREE.Mesh(bridgeGeo,white());
 bridge.position.set(0,1.27,.86); bridge.rotation.x=-.16;
 bridge.userData.surface='flap-back bridge';
-bridge.userData.width=2.07;
+bridge.userData.width=3.45;
 bridge.userData.height=.72;
 bridge.userData.noPolygons=true;
-bridge.userData.clipPolygon=[new THREE.Vector2(-2.07/2,-.72/2),new THREE.Vector2(2.07/2,-.72/2),new THREE.Vector2(2.07/2,.72/2),new THREE.Vector2(-2.07/2,.72/2)];
+bridge.userData.clipPolygon=[new THREE.Vector2(-3.45/2,-.72/2),new THREE.Vector2(3.45/2,-.72/2),new THREE.Vector2(3.45/2,.72/2),new THREE.Vector2(-3.45/2,.72/2)];
 const bridgeEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bridgeGeo),black());
 bridgeEdges.position.copy(bridge.position); bridgeEdges.rotation.copy(bridge.rotation);
 group.add(bridge,bridgeEdges);
