@@ -363,6 +363,7 @@ function updateDraggedShape(e){
  if(!draggingHandle)return;
  const p=surfaceIntersection(e,draggingHandle.surface);
  if(!p)return;
+ targetSpeed=0; targetPitch=0;
  const surface=draggingHandle.surface,records=polygonRecords.get(surface)||[],record=draggingHandle.record;
  const i=record.index,minUnit=1/5;
  const minEnd=record.start+minUnit;
@@ -402,6 +403,7 @@ canvas.addEventListener('pointerdown',e=>{
  const h=ray.intersectObjects(handles,true)[0]?.object;
  if(h?.userData?.isShapeHandle){
    const record=h.userData.shapeRecord;
+   targetSpeed=0; targetPitch=0;
    draggingHandle={record,surface:record.surface};
    selectedSurface=record.surface;selectedTarget=record.mesh;
    canvas.setPointerCapture(e.pointerId);
