@@ -104,10 +104,12 @@ function roundedPanel(name,w,h,r,z,x=0){
 // All bag panels have rounded corners and complete perimeter outlines.
 roundedPanel('front',3.45,2.45,.30,.55);
 roundedPanel('back',3.45,2.45,.30,-.62);
+// Width panels are anchored at the two perimeter edges of the front/back faces.
+// Each panel extends inward from its edge so the full surface sits between those faces.
 const side1=roundedPanel('side 1',1.17,2.18,.24,-.035,-1.725);
 const side2=roundedPanel('side 2',1.17,2.18,.24,-.035,1.725);
 side1.rotation.y=Math.PI/2;
-side2.rotation.y=Math.PI/2;
+side2.rotation.y=-Math.PI/2;
 
 const bottomShape=new THREE.Shape();
 bottomShape.moveTo(-1.55,-.22);
