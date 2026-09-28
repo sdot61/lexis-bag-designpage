@@ -363,16 +363,20 @@ function rebuildShape(record){
  record.edge.userData.shapeRecord=record;
  surface.add(record.edge);
 
- // The handle remains on the right boundary selected by the user.
- const rightX=right;
- const lineGeo=new THREE.BufferGeometry().setFromPoints([
-   new THREE.Vector3(rightX,-h/2+inset,.251),
-   new THREE.Vector3(rightX,h/2-inset,.251)
- ]);
- record.handle=new THREE.Line(lineGeo,new THREE.LineBasicMaterial({color:0x000000}));
+ // The adjustment handle is the shape's actual left boundary.
+ // It uses the same slanted contour as the rendered shape, so there
+ // is no extra line on the product that would not actually exist.
+ const leftHandlePoints=[
+   new THREE.Vector3(left,-h/2+inset,.251),
+   new THREE.Vector3(left+shift,h/2-inset,.251)
+ ];
+ record.handle=new THREE.Line(
+   new THREE.BufferGeometry().setFromPoints(leftHandlePoints),
+   new THREE.LineBasicMaterial({color:0x000000})
+ );
  record.handle.userData.shapeRecord=record;
  record.handle.userData.isShapeHandle=true;
- record.handle.userData.isRightHandle=true;
+ record.handle.userData.isLeftHandle=true;
  surface.add(record.handle);
 }
 function rebuildSurface(surface){
@@ -431,24 +435,28 @@ function updateDraggedShape(e){
  const record=draggingHandle.record;
  const i=record.index;
  const minUnit=1/5;
+ const proposedStart=(p.x+surface.userData.width/2)/surface.userData.width;
 
- const minEnd=record.start+minUnit;
- const maxEnd=i<records.length-1
-   ? records[i+1].end-minUnit
-   : 1;
+ // The right edge of the selected shape is anchored. Its left edge
+ // is the only boundary that moves. For shapes after the first, that
+ // left edge is shared with the preceding shape's right edge.
+ // Keep the preceding shape at least one unit wide, while allowing
+ // the first shape to extend beyond the surface so the surface itself
+ // clips the visible contour.
+ let minStart=0;
+ if(i>0){
+   minStart=records[i-1].start+minUnit;
+ }
+ record.start=Math.min(record.end-minUnit,Math.max(minStart,proposedStart));
 
- record.end=Math.max(
-   minEnd,
-   Math.min(maxEnd,(p.x+surface.userData.width/2)/surface.userData.width)
- );
+ if(i>0){
+   records[i-1].end=record.start;
+ }
 
- // Preserve each later shape's width, but move its left boundary to
- // the immediately preceding shape's right boundary. This makes the
- // whole sequence a dynamically connected chain.
+ // All shapes to the right keep their right edges anchored. Their
+ // shared left boundaries follow the preceding right boundaries.
  for(let j=i+1;j<records.length;j++){
-   const width=Math.max(minUnit,records[j].end-records[j].start);
    records[j].start=records[j-1].end;
-   records[j].end=Math.min(1,records[j].start+width);
  }
 
  rebuildSurface(surface);
@@ -468,7 +476,7 @@ canvas.addEventListener('pointermove',e=>{
  ray.setFromCamera(pointer,camera);
  const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
  if(hit!==hovered){hover(hovered,false);hovered=hit;if(hovered)hover(hovered,true)}
- const handleHit=ray.intersectObjects(surfaces.flatMap(s=>(polygonRecords.get(s)||[]).map(r=>r.handle).filter(h=>h?.userData?.isRightHandle)),true)[0]?.object;
+ const handleHit=ray.intersectObjects(surfaces.flatMap(s=>(polygonRecords.get(s)||[]).map(r=>r.handle).filter(h=>h?.userData?.isLeftHandle)),true)[0]?.object;
  canvas.classList.toggle('shape-cursor',!!handleHit);
 });
 canvas.addEventListener('pointerdown',e=>{
@@ -477,7 +485,7 @@ canvas.addEventListener('pointerdown',e=>{
  ray.setFromCamera(pointer,camera);
  const handles=[];
  polygonRecords.forEach(records=>records.forEach(record=>{if(record.handle)handles.push(record.handle)}));
- const h=ray.intersectObjects(handles.filter(x=>x.userData?.isRightHandle),true)[0]?.object;
+ const h=ray.intersectObjects(handles.filter(x=>x.userData?.isLeftHandle),true)[0]?.object;
  if(h?.userData?.isShapeHandle){
    const record=h.userData.shapeRecord;
    targetSpeed=0; targetPitch=0;
@@ -499,7 +507,7 @@ canvas.addEventListener('click',e=>{
  const hits=ray.intersectObjects(surfaces,true);
  const shapeHit=hits.find(x=>x.object?.userData?.shapeRecord)?.object||null;
  const hit=shapeHit||hits[0]?.object||null;
- if(hit?.userData?.isRightHandle)return;
+ if(hit?.userData?.isLeftHandle)return;
  if(hit){
    const base=baseSurface(hit);
    selectedTarget=hit;
