@@ -24,7 +24,7 @@ main{width:100%;max-width:1180px;margin:10px auto 70px;padding:0 20px}
 .panel-title{font-size:16px;font-weight:700;margin:0 0 22px}.bag-choice{border:0;background:none;padding:0;font:inherit;font-size:16px;color:#222;cursor:pointer;text-align:left}.bag-choice:hover{text-decoration:underline}
 .panel-rule{border:0;border-top:2px dashed #000;margin:24px 0}
 .size-options{display:flex;flex-direction:column;gap:12px}.size-option{border:0;background:none;padding:0;font:inherit;font-size:15px;text-align:left;cursor:pointer}.size-option:hover{text-decoration:underline}.size-option.active{font-weight:700}
-.color-title{font-size:15px;margin:0 0 16px}.swatch-list{display:flex;flex-direction:column;gap:14px}.swatch{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font:inherit;font-size:14px;cursor:pointer;text-align:left}.add-cart{margin-top:auto;width:100%;border:2px solid #f2c94c;border-radius:999px;background:#f2c94c;color:#fff;padding:12px 10px;font:inherit;font-size:16px;font-weight:700;cursor:pointer}.add-cart:hover{filter:brightness(.96)}.smudge{width:34px;height:26px;display:inline-block;border-radius:55% 42% 62% 38% / 48% 58% 42% 52%;transform:rotate(-7deg);box-shadow:inset 4px 2px 0 rgba(255,255,255,.22),inset -3px -2px 0 rgba(0,0,0,.08)}
+.color-title{font-size:15px;margin:0 0 16px}.swatch-list{display:flex;flex-direction:column;gap:14px}.swatch{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font:inherit;font-size:14px;cursor:pointer;text-align:left}.add-cart{margin-top:auto;width:100%;border:2px solid #daa520;border-radius:999px;background:#daa520;color:#fff;padding:12px 10px;font:inherit;font-size:16px;font-weight:700;cursor:pointer}.add-cart:hover{filter:brightness(.96)}.smudge{width:34px;height:26px;display:inline-block;border-radius:55% 42% 62% 38% / 48% 58% 42% 52%;transform:rotate(-7deg);box-shadow:inset 4px 2px 0 rgba(255,255,255,.22),inset -3px -2px 0 rgba(0,0,0,.08)}
 .smudge.teal{background:#1bb5b2}.smudge.white{background:#fff;border:1px solid #aaa}.smudge.pink{background:#f06292}.smudge.purple{background:#9b5de5}.smudge.black{background:#111}
 #scene{width:100%;height:100%;min-height:650px;display:block}.designer-main:before{content:"";position:absolute;left:12%;right:12%;bottom:7%;height:1px;background:rgba(0,0,0,.06)}
 .bag-hint{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:#777;pointer-events:none}
@@ -104,8 +104,10 @@ function roundedPanel(name,w,h,r,z,x=0){
 // All bag panels have rounded corners and complete perimeter outlines.
 roundedPanel('front',3.45,2.45,.30,.55);
 roundedPanel('back',3.45,2.45,.30,-.62);
-roundedPanel('side 1',.72,2.18,.24,-.03,-1.72);
-roundedPanel('side 2',.72,2.18,.24,-.03,1.72);
+const side1=roundedPanel('side 1',1.17,2.18,.24,-.035,-1.72);
+const side2=roundedPanel('side 2',1.17,2.18,.24,-.035,1.72);
+side1.rotation.y=Math.PI/2;
+side2.rotation.y=Math.PI/2;
 
 const bottomShape=new THREE.Shape();
 bottomShape.moveTo(-1.55,-.22);
