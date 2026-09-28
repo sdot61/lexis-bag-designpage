@@ -106,7 +106,7 @@ const controls=new OrbitControls(camera,canvas);
 controls.enableDamping=true; controls.enablePan=false; controls.minDistance=7; controls.maxDistance=12;
 controls.target.set(0,0,0);
 
-const group=new THREE.Group(); group.visible=false; scene.add(group);
+const group=new THREE.Group(); group.visible=true; scene.add(group);
 const surfaces=[];
 const white=()=>new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
 const black=()=>new THREE.LineBasicMaterial({color:0x000000});
@@ -130,7 +130,6 @@ function roundedPanel(name,w,h,r,z,x=0,rotationY=0){
   shape.lineTo(-w/2,-h/2+r); shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);
   const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
   const mesh=new THREE.Mesh(geo,white()); mesh.userData.surface=name; mesh.userData.width=w; mesh.userData.height=h; mesh.userData.clipPolygon=shape.getPoints(24).map(p=>p.clone());
-  mesh.userData.designZ=(name==='back'||name==='side 1')?-.24:.24;
   const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),black());
   const pair=new THREE.Group();
   pair.position.set(x,0,z);
@@ -159,7 +158,7 @@ bottomShape.quadraticCurveTo(.8,.42,0,.45);
 bottomShape.quadraticCurveTo(-.8,.42,-1.55,.22);
 bottomShape.closePath();
 const bottomGeo=new THREE.ExtrudeGeometry(bottomShape,{depth:.12,bevelEnabled:true,bevelSegments:4,bevelSize:.05,bevelThickness:.04,curveSegments:12});
-const bottom=new THREE.Mesh(bottomGeo,white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom'; bottom.userData.width=3.10; bottom.userData.height=.90; bottom.userData.designZ=.18; bottom.userData.clipPolygon=bottomShape.getPoints(24).map(p=>p.clone());
+const bottom=new THREE.Mesh(bottomGeo,white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom'; bottom.userData.width=3.10; bottom.userData.height=.90; bottom.userData.clipPolygon=bottomShape.getPoints(24).map(p=>p.clone());
 const bottomEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bottomGeo,12),black()); bottomEdges.position.copy(bottom.position); bottomEdges.rotation.copy(bottom.rotation);
 group.add(bottom,bottomEdges); surfaces.push(bottom);
 
@@ -175,7 +174,7 @@ flapShape.lineTo(-1.28,.56);
 flapShape.quadraticCurveTo(-1.48,.56,-1.55,.42);
 flapShape.closePath();
 const flapGeo=new THREE.ExtrudeGeometry(flapShape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
-const flap=new THREE.Mesh(flapGeo,white()); flap.position.set(0,1.70,.47); flap.rotation.x=-.16; flap.userData.surface='front cover'; flap.userData.width=3.10; flap.userData.height=1.14; flap.userData.designZ=.24; flap.userData.clipPolygon=flapShape.getPoints(24).map(p=>p.clone());
+const flap=new THREE.Mesh(flapGeo,white()); flap.position.set(0,1.70,.47); flap.rotation.x=-.16; flap.userData.surface='front cover'; flap.userData.width=3.10; flap.userData.height=1.14; flap.userData.clipPolygon=flapShape.getPoints(24).map(p=>p.clone());
 const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flapGeo,12),black()); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation);
 group.add(flap,flapEdges); surfaces.push(flap);
 
@@ -311,29 +310,6 @@ function clipPolygon(points,axis,value,keepGreater){
   return out;
 }
 
-function clipLineToConvexPolygon(a,b,clipPoints){
-  if(!clipPoints?.length)return[a.clone(),b.clone()];
-  let t0=0,t1=1;
-  let area=0;
-  for(let i=0;i<clipPoints.length;i++){
-    const p=clipPoints[i],q=clipPoints[(i+1)%clipPoints.length];
-    area+=p.x*q.y-q.x*p.y;
-  }
-  const winding=area>=0?1:-1;
-  const dx=b.x-a.x,dy=b.y-a.y;
-  for(let i=0;i<clipPoints.length;i++){
-    const A=clipPoints[i],B=clipPoints[(i+1)%clipPoints.length];
-    const ex=B.x-A.x,ey=B.y-A.y;
-    const c0=((ex*(a.y-A.y)-ey*(a.x-A.x))*winding);
-    const cd=((ex*dy-ey*dx)*winding);
-    if(Math.abs(cd)<1e-12){if(c0<-1e-9)return null;continue}
-    const t=-c0/cd;
-    if(cd>0)t0=Math.max(t0,t);else t1=Math.min(t1,t);
-    if(t0>t1)return null;
-  }
-  return[a.clone().addScaledVector(b.clone().sub(a),t0),a.clone().addScaledVector(b.clone().sub(a),t1)];
-}
-
 function clipAgainstConvexPolygon(points,clipPoints){
   if(!clipPoints?.length)return points;
   let subject=points.map(p=>p.clone());
@@ -370,7 +346,6 @@ function clipAgainstConvexPolygon(points,clipPoints){
 function rebuildShape(record){
   const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
   const bottom=-h/2,top=h/2;
-  const designZ=surface.userData.designZ??.24;
 
   // Every shape owns its right boundary. The next shape reuses that exact
   // boundary as its left boundary, so adjacent shapes can never develop a gap
@@ -425,19 +400,14 @@ function rebuildShape(record){
   record.mesh.userData.surface=surface.userData.surface+' shape '+(record.index+1);
   record.mesh.userData.designColor=record.color||0xd9f5f5;
   if(record.texture){
-    record.texture.wrapS=THREE.ClampToEdgeWrapping;
-    record.texture.wrapT=THREE.ClampToEdgeWrapping;
-    record.texture.repeat.set(1,1);
-    record.texture.offset.set(0,0);
     record.mesh.material.map=record.texture;
     record.mesh.material.color.set(0xffffff);
-    record.mesh.material.needsUpdate=true;
   }
-  record.mesh.position.z=designZ;
+  record.mesh.position.z=.24;
   surface.add(record.mesh);
 
   // The visible outline is the actual clipped perimeter.
-  const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,designZ+(designZ>=0?.009:-.009)));
+  const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,.249));
   edgePoints.push(edgePoints[0].clone());
   record.edge=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(edgePoints),
@@ -448,14 +418,11 @@ function rebuildShape(record){
 
   // Only the right boundary is a hit target. It is invisible, so the visible
   // boundary remains the actual shape edge rather than a second adjustment line.
-  const rawHandleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
-  const rawHandleB=new THREE.Vector2(record.rightBoundary.top,top);
-  const handleClipped=clipLineToConvexPolygon(rawHandleA,rawHandleB,record.surface.userData.clipPolygon||[
-    new THREE.Vector2(-w/2,bottom),new THREE.Vector2(w/2,bottom),new THREE.Vector2(w/2,top),new THREE.Vector2(-w/2,top)
-  ]);
-  const handleZ=designZ+(designZ>=0?.015:-.015);
-  const handlePoints=handleClipped?[new THREE.Vector3(handleClipped[0].x,handleClipped[0].y,handleZ),new THREE.Vector3(handleClipped[1].x,handleClipped[1].y,handleZ)]:[];
-  record.handle=handlePoints.length===2?new THREE.Line(
+  const handlePoints=[
+    new THREE.Vector3(record.rightBoundary.bottom,bottom,.255),
+    new THREE.Vector3(record.rightBoundary.top,top,.255)
+  ];
+  record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints),
     new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
   );
@@ -540,7 +507,7 @@ function updateDraggedShape(e){
   const minUnit=1/5;
   const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
   const minRight=record.start+minUnit;
-  const maxRight=i<records.length-1?records[i+1].end-minUnit:1;
+  const maxRight=i<records.length-1?records[i+1].end-minUnit:1.35;
   const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
   const delta=(newEnd-record.end)*surface.userData.width;
 
@@ -651,13 +618,6 @@ document.getElementById('messengerButton').addEventListener('click',()=>group.vi
 document.querySelectorAll('.size-option').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.size-option').forEach(x=>x.classList.remove('active'));b.classList.add('active')}));
 document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
  if(!selectedTarget)return;
- const base=baseSurface(selectedTarget);
- const shapeRecord=selectedTarget.userData.shapeRecord;
- const records=base?(polygonRecords.get(base)||[]):[];
- if(!shapeRecord&&base&&!base.userData.noPolygons&&records.length>=4){
-   const covered=records[records.length-1]?.end>=.999999;
-   if(covered)return;
- }
  applyDesign(selectedTarget,b);
  const record=selectedTarget.userData.shapeRecord;
  if(record){
@@ -697,3 +657,70 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
 deleteShapeButton.addEventListener('click',e=>{
  e.stopPropagation();
  const record=selectedTarget?.userData?.shapeRecord;
+ if(!record)return;
+ const surface=record.surface;
+ const records=polygonRecords.get(surface)||[];
+ const idx=records.indexOf(record);
+ if(idx<0)return;
+
+ // Remove every rendered object for the current surface before rebuilding it.
+ records.forEach(r=>{
+   if(r.mesh)surface.remove(r.mesh);
+   if(r.handle)surface.remove(r.handle);
+   if(r.edge)surface.remove(r.edge);
+ });
+ records.splice(idx,1);
+
+ if(records.length===0){
+   polygonRecords.set(surface,[]);
+   surfaceOrientations.delete(surface);
+   polygonOrientation=null;
+   selectedTarget=null;
+   selectedSurface=surface;
+   updatePolygonStatus();
+   return;
+ }
+
+ // Rebuild the boundary chain from left to right. The new first shape gets
+ // the same special left-edge treatment as an originally added first shape.
+ const w=surface.userData.width;
+ const orientation=surfaceOrientations.get(surface)||records[0].orientation||'right';
+ records.forEach((r,i)=>{
+   r.index=i;
+   r.orientation=orientation;
+   r.start=i===0?0:records[i-1].end;
+   if(i===0){
+     const shift=w*(shapeTemplates[r.shapeName]??.085)*(orientation==='left'?-1:1);
+     r.leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
+   }else{
+     r.leftBoundary=records[i-1].rightBoundary;
+   }
+   r.end=Math.max(r.start+1/5,(r.rightBoundary.bottom-r.leftBoundary.bottom+w*0)/w+w/2/w);
+ });
+
+ // Keep the stored widths internally consistent with the actual shared
+ // boundaries, then rebuild all shapes in one pass.
+ records.forEach((r,i)=>{
+   r.start=i===0?0:records[i-1].end;
+   r.end=Math.min(1.35,r.start+(r.rightBoundary.bottom-r.leftBoundary.bottom)/w);
+ });
+ polygonRecords.set(surface,records);
+ rebuildSurface(surface);
+ selectedSurface=surface;
+ selectedTarget=null;
+ updatePolygonStatus();
+});
+document.addEventListener('click',e=>{
+ if(!surfaceTool.contains(e.target))polygonMenu.classList.remove('open');
+});
+document.getElementById('addCart').addEventListener('click',()=>{
+ const size=document.querySelector('.size-option.active')?.textContent.trim()||'Small';
+ const item={product:'Messenger Bag',size,addedAt:new Date().toISOString()};
+ const cart=JSON.parse(localStorage.getItem('lexisTreeFortCart')||'[]');cart.push(item);localStorage.setItem('lexisTreeFortCart',JSON.stringify(cart));
+ const button=document.getElementById('addCart');button.textContent='Added to Cart!';setTimeout(()=>button.textContent='Add to Cart!',1400);
+});
+function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);
+function animate(){requestAnimationFrame(animate);const shapeMode=!!polygonOrientation||!!draggingHandle||!controls.enabled;if(shapeMode){targetSpeed=0;targetPitch=0}group.rotation.y+=shapeMode?0:targetSpeed;group.rotation.x=Math.max(-.95,Math.min(.95,group.rotation.x+(shapeMode?0:targetPitch)));controls.update();renderer.render(scene,camera)} animate();
+</script>
+</body></html>
