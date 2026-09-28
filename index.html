@@ -278,165 +278,210 @@ function updatePolygonStatus(){
  });
 }
 const shapeTemplates={
- slight:.06,
- medium:.11,
- strong:.17,
- wide:.23
+ slight:.055,
+ medium:.085,
+ strong:.115,
+ wide:.15
 };
+
+function boundaryFromShift(leftBoundary,span,shift){
+  return {
+    bottom:leftBoundary.bottom+span,
+    top:leftBoundary.top+span+shift
+  };
+}
+
+function clipPolygon(points,axis,value,keepGreater){
+  const out=[];
+  for(let i=0;i<points.length;i++){
+    const P=points[i],Q=points[(i+1)%points.length];
+    const pIn=keepGreater?(P[axis]>=value):(P[axis]<=value);
+    const qIn=keepGreater?(Q[axis]>=value):(Q[axis]<=value);
+    if(pIn!==qIn){
+      const denom=Q[axis]-P[axis];
+      if(Math.abs(denom)>1e-9){
+        const t=(value-P[axis])/denom;
+        out.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
+      }
+    }
+    if(qIn)out.push(Q.clone());
+  }
+  return out;
+}
+
 function rebuildShape(record){
- const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
- const orientation=record.orientation||surfaceOrientations.get(surface)||'right';
- const bottom=-h/2, top=h/2;
- const span=Math.max(.0001,(record.end-record.start)*w);
- const templateShift=Math.min(span*.70,w*(shapeTemplates[record.shapeName]??.11));
- const shift=templateShift*(orientation==='right'?1:-1);
- // First shape: its left boundary midpoint is exactly on the surface's left edge.
- // This intentionally puts part of the parallelogram outside the surface so the
- // visible starting shape is clipped into a polygon. The right boundary is shared.
- let left=record.start*w-w/2;
- if(record.index===0) left=-w/2-shift/2;
- const right=left+span;
- const raw=[
-   new THREE.Vector2(left,bottom),
-   new THREE.Vector2(right,bottom),
-   new THREE.Vector2(right+shift,top),
-   new THREE.Vector2(left+shift,top)
- ];
+  const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
+  const bottom=-h/2,top=h/2;
 
- function clip(points,axis,value,keepGreater){
-   const out=[];
-   for(let i=0;i<points.length;i++){
-     const P=points[i],Q=points[(i+1)%points.length];
-     const pIn=keepGreater?(P[axis]>=value):(P[axis]<=value);
-     const qIn=keepGreater?(Q[axis]>=value):(Q[axis]<=value);
-     if(pIn!==qIn){
-       const denom=Q[axis]-P[axis];
-       if(Math.abs(denom)>1e-9){
-         const t=(value-P[axis])/denom;
-         out.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
-       }
-     }
-     if(qIn)out.push(Q.clone());
-   }
-   return out;
- }
- let clipped=raw;
- const xClipInset=Math.min(.018,w*.008);
- clipped=clip(clipped,'x',-w/2+xClipInset,true);
- clipped=clip(clipped,'x',w/2-xClipInset,false);
- clipped=clip(clipped,'y',bottom,true);
- clipped=clip(clipped,'y',top,false);
- if(clipped.length<3)return;
+  // Every shape owns its right boundary. The next shape reuses that exact
+  // boundary as its left boundary, so adjacent shapes can never develop a gap
+  // or mismatched slant.
+  if(!record.leftBoundary){
+    const span=Math.max(.0001,(record.end-record.start)*w);
+    const shift=w*(shapeTemplates[record.shapeName]??.085)*(record.orientation==='left'?-1:1);
+    record.leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
+    record.rightBoundary=boundaryFromShift(record.leftBoundary,span,0);
+  }
 
- const shape=new THREE.Shape();
- shape.moveTo(clipped[0].x,clipped[0].y);
- clipped.slice(1).forEach(p=>shape.lineTo(p.x,p.y));
- shape.closePath();
+  const raw=[
+    new THREE.Vector2(record.leftBoundary.bottom,bottom),
+    new THREE.Vector2(record.rightBoundary.bottom,bottom),
+    new THREE.Vector2(record.rightBoundary.top,top),
+    new THREE.Vector2(record.leftBoundary.top,top)
+  ];
 
- if(record.mesh)surface.remove(record.mesh);
- if(record.handle)surface.remove(record.handle);
- if(record.edge)surface.remove(record.edge);
+  // Clip the actual shape against the surface. Anything outside is not
+  // rendered. This naturally eats corners at the top/bottom and produces
+  // polygons where a corner reaches a surface corner.
+  let clipped=raw;
+  const inset=Math.min(.006,w*.002);
+  clipped=clipPolygon(clipped,'x',-w/2+inset,true);
+  clipped=clipPolygon(clipped,'x',w/2-inset,false);
+  clipped=clipPolygon(clipped,'y',bottom+inset,true);
+  clipped=clipPolygon(clipped,'y',top-inset,false);
+  if(clipped.length<3)return;
 
- record.mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),
-   new THREE.MeshBasicMaterial({color:record.color||0xd9f5f5,side:THREE.DoubleSide}));
- record.mesh.userData.baseSurface=surface;
- record.mesh.userData.shapeRecord=record;
- record.mesh.userData.surface=surface.userData.surface+' shape '+(record.index+1);
- record.mesh.userData.designColor=record.color||0xd9f5f5;
- if(record.texture){
-   record.mesh.material.map=record.texture;
-   record.mesh.material.color.set(0xffffff);
- }
- record.mesh.position.z=.24;
- surface.add(record.mesh);
+  const shape=new THREE.Shape();
+  shape.moveTo(clipped[0].x,clipped[0].y);
+  clipped.slice(1).forEach(p=>shape.lineTo(p.x,p.y));
+  shape.closePath();
 
- const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,.249));
- edgePoints.push(edgePoints[0].clone());
- record.edge=new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgePoints),
-   new THREE.LineBasicMaterial({color:0x000000}));
- record.edge.userData.shapeRecord=record;
- surface.add(record.edge);
+  if(record.mesh)surface.remove(record.mesh);
+  if(record.handle)surface.remove(record.handle);
+  if(record.edge)surface.remove(record.edge);
 
- // The adjustment boundary is part of the shape itself. For Right orientation
- // it is the left edge that faces the next added shape; for Left orientation
- // it is the right edge. The line uses the exact same contour as the shape.
- // The working boundary is the actual right edge of the shape. There is no
- // second adjustment line; the shape's own edge is the draggable boundary.
- record.handle=record.edge;
- record.handle.userData.shapeRecord=record;
- record.handle.userData.isShapeHandle=true;
- record.handle.userData.isBoundaryHandle=true;
- record.handle.userData.isWorkingHandle=true;
+  record.mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),
+    new THREE.MeshBasicMaterial({color:record.color||0xd9f5f5,side:THREE.DoubleSide}));
+  record.mesh.userData.baseSurface=surface;
+  record.mesh.userData.shapeRecord=record;
+  record.mesh.userData.surface=surface.userData.surface+' shape '+(record.index+1);
+  record.mesh.userData.designColor=record.color||0xd9f5f5;
+  if(record.texture){
+    record.mesh.material.map=record.texture;
+    record.mesh.material.color.set(0xffffff);
+  }
+  record.mesh.position.z=.24;
+  surface.add(record.mesh);
+
+  // The visible outline is the actual clipped perimeter.
+  const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,.249));
+  edgePoints.push(edgePoints[0].clone());
+  record.edge=new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(edgePoints),
+    new THREE.LineBasicMaterial({color:0x000000})
+  );
+  record.edge.userData.shapeRecord=record;
+  surface.add(record.edge);
+
+  // Only the right boundary is a hit target. It is invisible, so the visible
+  // boundary remains the actual shape edge rather than a second adjustment line.
+  const handlePoints=[
+    new THREE.Vector3(record.rightBoundary.bottom,Math.max(bottom,inset-bottom),.255),
+    new THREE.Vector3(record.rightBoundary.top,Math.min(top,top-inset),.255)
+  ];
+  record.handle=new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(handlePoints),
+    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:0})
+  );
+  record.handle.userData.shapeRecord=record;
+  record.handle.userData.isShapeHandle=true;
+  record.handle.userData.isBoundaryHandle=true;
+  record.handle.userData.isWorkingHandle=true;
+  surface.add(record.handle);
 }
+
 function rebuildSurface(surface){
- const records=polygonRecords.get(surface)||[];
- records.forEach((r,i)=>{r.index=i; rebuildShape(r)});
+  const records=polygonRecords.get(surface)||[];
+  records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
 }
+
 function addPolygonToSurface(surface,shapeName){
- if(!surface||surface.userData.noPolygons)return;
- const records=polygonRecords.get(surface)||[];
- const orientation=surfaceOrientations.get(surface);
- if(records.length>=5||!orientation)return;
+  if(!surface||surface.userData.noPolygons)return;
+  const records=polygonRecords.get(surface)||[];
+  const orientation=surfaceOrientations.get(surface);
+  if(records.length>=5||!orientation)return;
 
- const minUnit=1/5;
- const start=records.length?records[records.length-1].end:0;
- const end=Math.min(1,start+minUnit);
- if(end-start<minUnit-1e-9)return;
+  const minUnit=1/5;
+  const w=surface.userData.width;
+  const span=minUnit*w;
 
- const record={
-   surface,
-   index:records.length,
-   start,
-   end,
-   shapeName,
-   orientation,
-   color:0xd9f5f5,
-   texture:null
- };
- records.push(record);
- polygonRecords.set(surface,records);
+  let leftBoundary;
+  if(records.length){
+    leftBoundary=records[records.length-1].rightBoundary;
+  }else{
+    const shift=w*(shapeTemplates[shapeName]??.085)*(orientation==='left'?-1:1);
+    // The first shape is centered on the extreme left edge. Its outer
+    // corners therefore start outside the surface and are clipped away.
+    leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
+  }
 
- rebuildSurface(surface);
- selectedTarget=record.mesh;
- selectedSurface=surface;
- polygonMenu.classList.remove('open');
- updatePolygonStatus();
+  const shift=w*(shapeTemplates[shapeName]??.085)*(orientation==='left'?-1:1);
+  const rightBoundary=boundaryFromShift(leftBoundary,span,shift);
+
+  const record={
+    surface,index:records.length,start:records.length?records[records.length-1].end:0,
+    end:(records.length+1)*minUnit,shapeName,orientation,
+    color:0xd9f5f5,texture:null,leftBoundary,rightBoundary
+  };
+  records.push(record);
+  polygonRecords.set(surface,records);
+
+  rebuildSurface(surface);
+  selectedTarget=record.mesh;
+  selectedSurface=surface;
+  polygonMenu.classList.remove('open');
+  updatePolygonStatus();
 }
+
 function surfaceIntersection(e,surface){
- const r=canvas.getBoundingClientRect();
- const p=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-(((e.clientY-r.top)/r.height)*2-1));
- ray.setFromCamera(p,camera);
- const localRay=ray.ray.clone();
- const inv=new THREE.Matrix4().copy(surface.matrixWorld).invert();
- localRay.applyMatrix4(inv);
- const plane=new THREE.Plane(new THREE.Vector3(0,0,1),-.171);
- const hit=new THREE.Vector3();
- return plane.intersectLine(new THREE.Line3(localRay.origin,localRay.origin.clone().add(localRay.direction.multiplyScalar(1000))),hit)?hit:null;
+  const r=canvas.getBoundingClientRect();
+  const p=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-(((e.clientY-r.top)/r.height)*2-1));
+  ray.setFromCamera(p,camera);
+  const localRay=ray.ray.clone();
+  const inv=new THREE.Matrix4().copy(surface.matrixWorld).invert();
+  localRay.applyMatrix4(inv);
+  // Shapes live at local z=.24 above their surface.
+  const plane=new THREE.Plane(new THREE.Vector3(0,0,1),-.24);
+  const hit=new THREE.Vector3();
+  return plane.intersectLine(
+    new THREE.Line3(localRay.origin,localRay.origin.clone().add(localRay.direction.multiplyScalar(1000))),
+    hit
+  )?hit:null;
 }
+
 function updateDraggedShape(e){
- if(!draggingHandle)return;
- const p=surfaceIntersection(e,draggingHandle.surface);
- if(!p)return;
- targetSpeed=0;targetPitch=0;
+  if(!draggingHandle)return;
+  const p=surfaceIntersection(e,draggingHandle.surface);
+  if(!p)return;
+  targetSpeed=0;targetPitch=0;
 
- const surface=draggingHandle.surface;
- const records=polygonRecords.get(surface)||[];
- const record=draggingHandle.record;
- const i=record.index;
- const minUnit=1/5;
- const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
+  const surface=draggingHandle.surface;
+  const records=polygonRecords.get(surface)||[];
+  const record=draggingHandle.record;
+  const i=record.index;
+  const minUnit=1/5;
+  const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
+  const minRight=record.start+minUnit;
+  const maxRight=i<records.length-1?records[i+1].end-minUnit:1.35;
+  const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
+  const delta=(newEnd-record.end)*surface.userData.width;
 
- // The selected boundary is the side facing the next shape. Move only that
- // boundary; the opposite side of the shape remains anchored.
- const minEnd=record.start+minUnit;
- const maxEnd=i<records.length-1?records[i+1].end-minUnit:1.35;
- record.end=Math.max(minEnd,Math.min(maxEnd,proposed));
- for(let j=i+1;j<records.length;j++) records[j].start=records[j-1].end;
+  // Translate only the right boundary. If another shape exists, its left
+  // boundary is the same object, so it moves with it automatically.
+  record.rightBoundary.bottom+=delta;
+  record.rightBoundary.top+=delta;
+  record.end=newEnd;
 
- rebuildSurface(surface);
- selectedTarget=record.mesh;
- updatePolygonStatus();
+  for(let j=i+1;j<records.length;j++){
+    records[j].start=records[j-1].end;
+    records[j].leftBoundary=records[j-1].rightBoundary;
+  }
+
+  rebuildSurface(surface);
+  selectedTarget=record.mesh;
+  updatePolygonStatus();
 }
+
 canvas.addEventListener('pointermove',e=>{
  const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
  pointer.x=x*2-1;pointer.y=-y*2+1;
