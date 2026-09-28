@@ -197,14 +197,14 @@ surfaces.push(hinge);
 // across the gap/border between the top flap and the back panel.
 const bridgeGeo=new THREE.PlaneGeometry(3.45,.72);
 const bridge=new THREE.Mesh(bridgeGeo,white());
-bridge.position.set(0,1.27,.735);
+bridge.position.set(0,1.27,.735); bridge.rotation.x=-.16;
 bridge.userData.surface='flap-back bridge';
 bridge.userData.width=3.45;
 bridge.userData.height=.72;
 bridge.userData.noPolygons=true;
 bridge.userData.clipPolygon=[new THREE.Vector2(-3.45/2,-.72/2),new THREE.Vector2(3.45/2,-.72/2),new THREE.Vector2(3.45/2,.72/2),new THREE.Vector2(-3.45/2,.72/2)];
 const bridgeEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bridgeGeo),black());
-bridgeEdges.position.copy(bridge.position);
+bridgeEdges.position.copy(bridge.position); bridgeEdges.rotation.copy(bridge.rotation);
 group.add(bridge,bridgeEdges);
 surfaces.push(bridge);
 
