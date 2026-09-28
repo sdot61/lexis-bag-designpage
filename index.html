@@ -181,14 +181,14 @@ group.add(flap,flapEdges); surfaces.push(flap);
 
 // Permanent hinge panel: a large, colorable rectangle between the rear bag body and front cover.
 // It is intentionally not eligible for added polygons.
-const hingeGeo=new THREE.PlaneGeometry(3.05,.34);
+const hingeGeo=new THREE.PlaneGeometry(3.05,.48);
 const hinge=new THREE.Mesh(hingeGeo,white());
 hinge.position.set(0,1.27,.66);
 hinge.userData.surface='hinge';
 hinge.userData.width=3.05;
-hinge.userData.height=.34;
+hinge.userData.height=.48;
 hinge.userData.noPolygons=true;
-hinge.userData.clipPolygon=[new THREE.Vector2(-3.05/2,-.34/2),new THREE.Vector2(3.05/2,-.34/2),new THREE.Vector2(3.05/2,.34/2),new THREE.Vector2(-3.05/2,.34/2)];
+hinge.userData.clipPolygon=[new THREE.Vector2(-3.05/2,-.48/2),new THREE.Vector2(3.05/2,-.48/2),new THREE.Vector2(3.05/2,.48/2),new THREE.Vector2(-3.05/2,.48/2)];
 const hingeEdges=new THREE.LineSegments(new THREE.EdgesGeometry(hingeGeo),black());
 hingeEdges.position.copy(hinge.position);
 group.add(hinge,hingeEdges);
