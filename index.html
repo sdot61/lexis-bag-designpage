@@ -53,7 +53,8 @@ footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.soc
   <div class="surface-tool-title">Surface Design</div>
   <div class="polygon-status" id="polygonStatus">Select a surface.</div>
   <div class="orientation-options" id="orientationOptions">
-    <button class="orientation-option" data-orientation="select">Select Surface</button>
+    <button class="orientation-option" data-orientation="right">Right ↗</button>
+    <button class="orientation-option" data-orientation="left">Left ↖</button>
   </div>
   <div class="polygon-picker" id="polygonPicker">
     <button class="polygon-picker-toggle" id="polygonPickerToggle">Choose Shape <span>▾</span></button>
@@ -279,7 +280,7 @@ function updatePolygonStatus(){
    status.textContent='Accessory · color only';
    polygonPicker.classList.remove('visible');
    deleteShapeButton.classList.remove('visible');
-   document.querySelectorAll('.orientation-option').forEach(x=>x.classList.toggle('active',x.dataset.orientation==='select'));
+   document.querySelectorAll('.orientation-option').forEach(x=>x.classList.remove('active'));
    return;
  }
  if(base.userData.noPolygons){
@@ -655,7 +656,11 @@ document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
 }));
 document.querySelectorAll('.orientation-option').forEach(b=>b.addEventListener('click',e=>{
  e.stopPropagation();
- if(!selectedSurface||selectedSurface.userData.surface!=='flap-back bridge')return;
+ if(!selectedSurface||selectedSurface.userData.noPolygons)return;
+ const orientation=b.dataset.orientation;
+ if(orientation!=='left'&&orientation!=='right')return;
+ surfaceOrientations.set(selectedSurface,orientation);
+ polygonOrientation=orientation;
  b.classList.add('active');
  selectedTarget=selectedSurface;
  updatePolygonStatus();
