@@ -321,8 +321,9 @@ function rebuildShape(record){
    return out;
  }
  let clipped=raw;
- clipped=clip(clipped,'x',-w/2+inset,true);
- clipped=clip(clipped,'x',w/2-inset,false);
+ const xClipInset=Math.min(.018,w*.008);
+ clipped=clip(clipped,'x',-w/2+xClipInset,true);
+ clipped=clip(clipped,'x',w/2-xClipInset,false);
  clipped=clip(clipped,'y',bottom,true);
  clipped=clip(clipped,'y',top,false);
  if(clipped.length<3)return;
