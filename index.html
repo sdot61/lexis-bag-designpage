@@ -116,7 +116,7 @@ function makeLeopardTexture(base){
  const ctx=cv.getContext('2d');ctx.fillStyle=base;ctx.fillRect(0,0,256,256);
  const spots=[[42,55,18,11],[96,40,15,10],[161,62,20,12],[215,42,13,9],[55,132,22,14],[125,112,16,11],[194,137,22,14],[35,205,14,10],[101,216,21,13],[170,204,15,10],[224,220,21,13]];
  ctx.fillStyle='#111';spots.forEach(([x,y,rx,ry],i)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,i*.17,0,Math.PI*2);ctx.fill()});
- const tex=new THREE.CanvasTexture(cv);return tex;
+ const tex=new THREE.CanvasTexture(cv);tex.wrapS=THREE.ClampToEdgeWrapping;tex.wrapT=THREE.ClampToEdgeWrapping;tex.needsUpdate=true;return tex;
 }
 leopardTextures['leopard-yellow']=makeLeopardTexture('#f3d23b');
 leopardTextures['leopard-pink']=makeLeopardTexture('#f06292');
@@ -515,7 +515,7 @@ canvas.addEventListener('pointerdown',e=>{
    targetSpeed=0;targetPitch=0;
    return;
  }
-});
+},true);
 canvas.addEventListener('pointerup',e=>{
  if(draggingHandle){draggingHandle=null;controls.enabled=true;canvas.releasePointerCapture(e.pointerId);canvas.classList.remove('shape-cursor')}
 });
@@ -579,23 +579,56 @@ deleteShapeButton.addEventListener('click',e=>{
  e.stopPropagation();
  const record=selectedTarget?.userData?.shapeRecord;
  if(!record)return;
- const records=polygonRecords.get(record.surface)||[];
+ const surface=record.surface;
+ const records=polygonRecords.get(surface)||[];
  const idx=records.indexOf(record);
  if(idx<0)return;
+
+ // Remove every rendered object for the current surface before rebuilding it.
+ records.forEach(r=>{
+   if(r.mesh)surface.remove(r.mesh);
+   if(r.handle)surface.remove(r.handle);
+   if(r.edge)surface.remove(r.edge);
+ });
  records.splice(idx,1);
+
+ if(records.length===0){
+   polygonRecords.set(surface,[]);
+   surfaceOrientations.delete(surface);
+   polygonOrientation=null;
+   selectedTarget=null;
+   selectedSurface=surface;
+   updatePolygonStatus();
+   return;
+ }
+
+ // Rebuild the boundary chain from left to right. The new first shape gets
+ // the same special left-edge treatment as an originally added first shape.
+ const w=surface.userData.width;
+ const orientation=surfaceOrientations.get(surface)||records[0].orientation||'right';
  records.forEach((r,i)=>{
    r.index=i;
-   if(i===0)r.start=0;
-   else r.start=records[i-1].end;
+   r.orientation=orientation;
+   r.start=i===0?0:records[i-1].end;
+   if(i===0){
+     const shift=w*(shapeTemplates[r.shapeName]??.085)*(orientation==='left'?-1:1);
+     r.leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
+   }else{
+     r.leftBoundary=records[i-1].rightBoundary;
+   }
+   r.end=Math.max(r.start+1/5,(r.rightBoundary.bottom-r.leftBoundary.bottom+w*0)/w+w/2/w);
  });
- records.forEach(r=>{if(r.mesh)record.surface.remove(r.mesh);if(r.handle)record.surface.remove(r.handle);if(r.edge)record.surface.remove(r.edge)});
- rebuildSurface(record.surface);
- selectedSurface=record.surface;
+
+ // Keep the stored widths internally consistent with the actual shared
+ // boundaries, then rebuild all shapes in one pass.
+ records.forEach((r,i)=>{
+   r.start=i===0?0:records[i-1].end;
+   r.end=Math.min(1.35,r.start+(r.rightBoundary.bottom-r.leftBoundary.bottom)/w);
+ });
+ polygonRecords.set(surface,records);
+ rebuildSurface(surface);
+ selectedSurface=surface;
  selectedTarget=null;
- if(records.length===0){
-   surfaceOrientations.delete(selectedSurface);
-   polygonOrientation=null;
- }
  updatePolygonStatus();
 });
 document.addEventListener('click',e=>{
