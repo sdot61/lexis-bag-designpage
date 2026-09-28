@@ -194,6 +194,21 @@ hingeEdges.position.copy(hinge.position);
 group.add(hinge,hingeEdges);
 surfaces.push(hinge);
 
+// Exterior bridge surface: a separate, color-only rectangle sitting outside the bag
+// across the gap/border between the top flap and the back panel.
+const bridgeGeo=new THREE.PlaneGeometry(3.10,.42);
+const bridge=new THREE.Mesh(bridgeGeo,white());
+bridge.position.set(0,1.27,.735);
+bridge.userData.surface='flap-back bridge';
+bridge.userData.width=3.10;
+bridge.userData.height=.42;
+bridge.userData.noPolygons=true;
+bridge.userData.clipPolygon=[new THREE.Vector2(-3.10/2,-.42/2),new THREE.Vector2(3.10/2,-.42/2),new THREE.Vector2(3.10/2,.42/2),new THREE.Vector2(-3.10/2,.42/2)];
+const bridgeEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bridgeGeo),black());
+bridgeEdges.position.copy(bridge.position);
+group.add(bridge,bridgeEdges);
+surfaces.push(bridge);
+
 // Curved opening contour.
 const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-1.40,1.34,.61),new THREE.Vector3(0,1.05,.70),new THREE.Vector3(1.40,1.34,.61));
 group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(48)),black()));
