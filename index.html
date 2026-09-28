@@ -99,8 +99,8 @@
       display: inline-block;
       padding: 8px 18px;
       color: #ffffff;
-      background: #9b5de5;
-      border: 2px solid #9b5de5;
+      background: #1bb5b2;
+      border: 2px solid #1bb5b2;
       border-radius: 999px;
       text-decoration: none;
       font-size: 16px;
@@ -110,11 +110,22 @@
       transition: background-color 0.2s, color 0.2s;
     }
 
-    .nav-bar a:hover,
-    .nav-bar a.active {
-      color: #ffffff;
+    .nav-bar a:first-child {
       background: #9b5de5;
       border-color: #9b5de5;
+    }
+
+    .nav-bar a:first-child:hover,
+    .nav-bar a:first-child.active {
+      background: #9b5de5;
+      border-color: #9b5de5;
+    }
+
+    .nav-bar a:not(:first-child):hover,
+    .nav-bar a:not(:first-child).active {
+      color: #ffffff;
+      background: #1bb5b2;
+      border-color: #1bb5b2;
     }
 
     .nav-dot {
