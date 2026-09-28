@@ -524,7 +524,9 @@ function updateDraggedShape(e){
   const minUnit=1/5;
   const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
   const minRight=record.start+minUnit;
-  const maxRight=i<records.length-1?records[i+1].end-minUnit:1.35;
+  // Adjacent shapes may encroach on one another. A shape only has to retain
+  // its own minimum width; its neighbor's boundary can move into its space.
+  const maxRight=i<records.length-1?records[i+1].end:1.35;
   const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
   const delta=(newEnd-record.end)*surface.userData.width;
 
