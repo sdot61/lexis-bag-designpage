@@ -24,8 +24,7 @@ main{width:100%;max-width:1180px;margin:10px auto 70px;padding:0 20px}
 .panel-title{font-size:16px;font-weight:700;margin:0 0 22px}.bag-choice{border:0;background:none;padding:0;font:inherit;font-size:16px;color:#222;cursor:pointer;text-align:left}.bag-choice:hover{text-decoration:underline}
 .panel-rule{border:0;border-top:2px dashed #000;margin:24px 0}
 .size-options{display:flex;flex-direction:column;gap:12px}.size-option{border:0;background:none;padding:0;font:inherit;font-size:15px;text-align:left;cursor:pointer}.size-option:hover{text-decoration:underline}.size-option.active{font-weight:700}
-.color-title{font-size:15px;margin:0 0 16px}.swatch-list{display:flex;flex-direction:column;gap:14px}.swatch{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;font:inherit;font-size:14px;cursor:pointer;text-align:left}.add-cart{margin-top:auto;width:100%;border:2px solid #daa520;border-radius:999px;background:#daa520;color:#fff;padding:12px 10px;font:inherit;font-size:16px;font-weight:700;cursor:pointer}.add-cart:hover{filter:brightness(.96)}.smudge{width:34px;height:26px;display:inline-block;border-radius:55% 42% 62% 38% / 48% 58% 42% 52%;transform:rotate(-7deg);box-shadow:inset 4px 2px 0 rgba(255,255,255,.22),inset -3px -2px 0 rgba(0,0,0,.08)}
-.smudge.teal{background:#1bb5b2}.smudge.white{background:#fff;border:1px solid #aaa}.smudge.pink{background:#f06292}.smudge.purple{background:#9b5de5}.smudge.black{background:#111}
+.color-title{font-size:13px;margin:0 0 9px}.swatch-list{display:grid;grid-template-columns:1fr 1fr;gap:7px 5px}.swatch{display:flex;align-items:center;gap:5px;border:0;background:none;padding:0;font:inherit;font-size:10px;cursor:pointer;text-align:left;min-width:0}.smudge{width:22px;height:17px;flex:0 0 22px;display:inline-block;border-radius:55% 42% 62% 38% / 48% 58% 42% 52%;transform:rotate(-7deg);box-shadow:inset 3px 1px 0 rgba(255,255,255,.22),inset -2px -1px 0 rgba(0,0,0,.08)}.smudge.teal{background:#1bb5b2}.smudge.white{background:#fff;border:1px solid #aaa}.smudge.pink{background:#f06292}.smudge.purple{background:#9b5de5}.smudge.black{background:#111}.smudge.beige{background:#e8d3b0}.smudge.orange{background:#f28c28}.smudge.yellow{background:#f6d743}.smudge.leopard-yellow{background-color:#f3d23b;background-image:radial-gradient(ellipse at 35% 35%,#111 0 18%,transparent 20%),radial-gradient(ellipse at 70% 65%,#111 0 16%,transparent 18%),radial-gradient(ellipse at 75% 25%,#111 0 10%,transparent 12%)}.smudge.leopard-pink{background-color:#f06292;background-image:radial-gradient(ellipse at 35% 35%,#111 0 18%,transparent 20%),radial-gradient(ellipse at 70% 65%,#111 0 16%,transparent 18%),radial-gradient(ellipse at 75% 25%,#111 0 10%,transparent 12%)}.polygon-tools{margin-top:12px}.polygon-status{font-size:9px;line-height:1.3;color:#666;margin:0 0 7px;min-height:24px}.orientation-options{display:flex;gap:4px;margin-bottom:7px}.orientation-option,.polygon-add,.polygon-reset{border:1px solid #000;background:#fff;border-radius:999px;padding:5px 6px;font:inherit;font-size:9px;cursor:pointer}.orientation-option.active{background:#000;color:#fff}.orientation-option:disabled{opacity:.45;cursor:default}.polygon-add{width:100%;margin-bottom:5px}.polygon-add:disabled{opacity:.4;cursor:default}.polygon-reset{width:100%;font-size:8px}.add-cart{margin-top:auto;width:100%;border:2px solid #daa520;border-radius:999px;background:#daa520;color:#fff;padding:10px 8px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}.add-cart:hover{filter:brightness(.96)}
 #scene{width:100%;height:100%;min-height:650px;display:block}.designer-main:before{content:"";position:absolute;left:12%;right:12%;bottom:7%;height:1px;background:rgba(0,0,0,.06)}
 .bag-hint{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:#777;pointer-events:none}
 footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.social-links{display:flex;justify-content:center;gap:18px;margin-bottom:14px}.social-links a{color:#444;text-decoration:none;font-weight:600}
@@ -62,6 +61,21 @@ footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.soc
 <button class="swatch" data-color="#f06292"><span class="smudge pink"></span>Hot Pink</button>
 <button class="swatch" data-color="#9b5de5"><span class="smudge purple"></span>Purple</button>
 <button class="swatch" data-color="#111111"><span class="smudge black"></span>Black</button>
+<button class="swatch" data-color="#e8d3b0"><span class="smudge beige"></span>Beige</button>
+<button class="swatch" data-color="#f28c28"><span class="smudge orange"></span>Orange</button>
+<button class="swatch" data-color="#f6d743"><span class="smudge yellow"></span>Yellow</button>
+<button class="swatch" data-pattern="leopard-yellow"><span class="smudge leopard-yellow"></span>Leopard Yellow</button>
+<button class="swatch" data-pattern="leopard-pink"><span class="smudge leopard-pink"></span>Leopard Pink</button>
+</div>
+<div class="polygon-tools">
+<h3 class="color-title">Surface Design</h3>
+<p class="polygon-status" id="polygonStatus">Hover a bag surface to select it.</p>
+<div class="orientation-options">
+<button class="orientation-option" data-orientation="right">Right ↗</button>
+<button class="orientation-option" data-orientation="left">Left ↖</button>
+</div>
+<button class="polygon-add" id="addPolygon" disabled>Add Polygon</button>
+<button class="polygon-reset" id="resetPolygons">Reset Polygons</button>
 </div>
 <button class="add-cart" id="addCart">Add to Cart!</button>
 </aside>
@@ -86,6 +100,16 @@ const group=new THREE.Group(); group.visible=false; scene.add(group);
 const surfaces=[];
 const white=()=>new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
 const black=()=>new THREE.LineBasicMaterial({color:0x000000});
+const leopardTextures={};
+function makeLeopardTexture(base){
+ const cv=document.createElement('canvas');cv.width=256;cv.height=256;
+ const ctx=cv.getContext('2d');ctx.fillStyle=base;ctx.fillRect(0,0,256,256);
+ const spots=[[42,55,18,11],[96,40,15,10],[161,62,20,12],[215,42,13,9],[55,132,22,14],[125,112,16,11],[194,137,22,14],[35,205,14,10],[101,216,21,13],[170,204,15,10],[224,220,21,13]];
+ ctx.fillStyle='#111';spots.forEach(([x,y,rx,ry],i)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,i*.17,0,Math.PI*2);ctx.fill()});
+ const tex=new THREE.CanvasTexture(cv);return tex;
+}
+leopardTextures['leopard-yellow']=makeLeopardTexture('#f3d23b');
+leopardTextures['leopard-pink']=makeLeopardTexture('#f06292');
 
 function roundedPanel(name,w,h,r,z,x=0,rotationY=0){
   const shape=new THREE.Shape();
@@ -95,7 +119,7 @@ function roundedPanel(name,w,h,r,z,x=0,rotationY=0){
   shape.lineTo(-w/2+r,h/2); shape.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);
   shape.lineTo(-w/2,-h/2+r); shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);
   const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
-  const mesh=new THREE.Mesh(geo,white()); mesh.userData.surface=name;
+  const mesh=new THREE.Mesh(geo,white()); mesh.userData.surface=name; mesh.userData.width=w; mesh.userData.height=h;
   const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),black());
   const pair=new THREE.Group();
   pair.position.set(x,0,z);
@@ -124,7 +148,7 @@ bottomShape.quadraticCurveTo(.8,.42,0,.45);
 bottomShape.quadraticCurveTo(-.8,.42,-1.55,.22);
 bottomShape.closePath();
 const bottomGeo=new THREE.ExtrudeGeometry(bottomShape,{depth:.12,bevelEnabled:true,bevelSegments:4,bevelSize:.05,bevelThickness:.04,curveSegments:12});
-const bottom=new THREE.Mesh(bottomGeo,white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom';
+const bottom=new THREE.Mesh(bottomGeo,white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom'; bottom.userData.width=3.10; bottom.userData.height=.90;
 const bottomEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bottomGeo,12),black()); bottomEdges.position.copy(bottom.position); bottomEdges.rotation.copy(bottom.rotation);
 group.add(bottom,bottomEdges); surfaces.push(bottom);
 
@@ -140,7 +164,7 @@ flapShape.lineTo(-1.28,.56);
 flapShape.quadraticCurveTo(-1.48,.56,-1.55,.42);
 flapShape.closePath();
 const flapGeo=new THREE.ExtrudeGeometry(flapShape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
-const flap=new THREE.Mesh(flapGeo,white()); flap.position.set(0,1.70,.47); flap.rotation.x=-.16; flap.userData.surface='front cover';
+const flap=new THREE.Mesh(flapGeo,white()); flap.position.set(0,1.70,.47); flap.rotation.x=-.16; flap.userData.surface='front cover'; flap.userData.width=3.10; flap.userData.height=1.14;
 const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flapGeo,12),black()); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation);
 group.add(flap,flapEdges); surfaces.push(flap);
 
@@ -159,29 +183,83 @@ const strapGeo=new THREE.TubeGeometry(strapCurve,64,.045,10,false);
 group.add(new THREE.LineSegments(new THREE.EdgesGeometry(strapGeo,18),black()));
 group.scale.set(.78,.78,.78); group.position.y=-.35; group.rotation.set(0,-.28,0);
 
-const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(); let hovered=null,targetSpeed=0,targetPitch=0;
-function hover(obj,on){if(obj)obj.material.color.set(on?0xd9f5f5:0xffffff)}
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
+let hovered=null,targetSpeed=0,targetPitch=0,polygonOrientation=null;
+const polygonCounts=new Map();
+
+function baseSurface(obj){return obj?.userData.baseSurface||obj||null}
+function hover(obj,on){
+ if(!obj?.material)return;
+ obj.material.color.set(on?0xd9f5f5:(obj.userData.designColor||0xffffff));
+}
+function applyDesign(obj,button){
+ if(!obj)return;
+ const pattern=button.dataset.pattern;
+ if(pattern){
+   obj.material.map=leopardTextures[pattern];
+   obj.material.color.set(0xffffff);
+   obj.material.needsUpdate=true;
+   obj.userData.designColor=0xffffff;
+ }else{
+   obj.material.map=null;
+   obj.material.color.set(button.dataset.color);
+   obj.material.needsUpdate=true;
+   obj.userData.designColor=new THREE.Color(button.dataset.color);
+ }
+}
+function updatePolygonStatus(){
+ const base=baseSurface(hovered),status=document.getElementById('polygonStatus'),add=document.getElementById('addPolygon');
+ const count=base?(polygonCounts.get(base)||0):0;
+ status.textContent=base?base.userData.surface+' · '+count+'/4 polygons'+(polygonOrientation?' · '+polygonOrientation+' angle':''):'Hover a bag surface to select it.';
+ add.disabled=!base||count>=4||!polygonOrientation;
+}
+function polygonPoints(surface,index){
+ const w=surface.userData.width,h=surface.userData.height,inset=Math.min(.07,w*.025,h*.025);
+ const x0=-w/2+inset,x1=w/2-inset,y0=-h/2+inset,y1=h/2-inset;
+ const delta=Math.min(w*.075,w*.18)*(polygonOrientation==='right'?1:-1);
+ const lines=[];
+ for(let i=1;i<=4;i++){const f=i/5;lines.push({bottom:x0+(x1-x0)*f,top:x0+(x1-x0)*f+delta});}
+ const left=index===0?{bottom:x0,top:x0}:lines[index-1],right=lines[index];
+ return [new THREE.Vector2(left.bottom,y0),new THREE.Vector2(right.bottom,y0),new THREE.Vector2(right.top,y1),new THREE.Vector2(left.top,y1)];
+}
+function addPolygonToSurface(surface){
+ const count=polygonCounts.get(surface)||0;if(!surface||count>=4||!polygonOrientation)return;
+ const poly=new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(polygonPoints(surface,count))),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide}));
+ poly.position.z=.171;poly.userData.baseSurface=surface;poly.userData.surface=surface.userData.surface+' polygon '+(count+1);poly.userData.designColor=0xffffff;
+ surface.add(poly);polygonCounts.set(surface,count+1);updatePolygonStatus();
+}
 canvas.addEventListener('pointermove',e=>{
- const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;
- pointer.x=x*2-1; pointer.y=-((e.clientY-r.top)/r.height)*2+1;
- const edge=Math.max(0,(Math.abs(x-.5)-.32)/.18);
- targetSpeed=(x<.18?1:x>.82?-1:0)*edge*.018;
- const y=(e.clientY-r.top)/r.height;
- const verticalEdge=Math.max(0,(Math.abs(y-.5)-.32)/.18);
- targetPitch=(y<.18?-.018:y>.82?.018:0)*verticalEdge;
+ const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+ pointer.x=x*2-1;pointer.y=-y*2+1;
+ const edge=Math.max(0,(Math.abs(x-.5)-.32)/.18);targetSpeed=(x<.18?1:x>.82?-1:0)*edge*.018;
+ const verticalEdge=Math.max(0,(Math.abs(y-.5)-.32)/.18);targetPitch=(y<.18?-.018:y>.82?.018:0)*verticalEdge;
  ray.setFromCamera(pointer,camera);
- const hit=ray.intersectObjects(surfaces,false)[0]?.object||null;
- if(hit!==hovered){hover(hovered,false);hovered=hit;hover(hovered,true)}
+ const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
+ if(hit!==hovered){hover(hovered,false);hovered=hit;hovered&&hovered.material&&hovered.material.color.set(0xd9f5f5)}
+ updatePolygonStatus();
 });
-canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0;targetPitch=0});
+canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0;targetPitch=0;updatePolygonStatus()});
 document.getElementById('messengerButton').addEventListener('click',()=>group.visible=true);
 document.querySelectorAll('.size-option').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.size-option').forEach(x=>x.classList.remove('active'));b.classList.add('active')}));
-document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{if(hovered)hovered.material.color.set(b.dataset.color)}));
+document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{if(hovered)applyDesign(hovered,b)}));
+document.querySelectorAll('.orientation-option').forEach(b=>b.addEventListener('click',()=>{
+ if(polygonOrientation)return;
+ polygonOrientation=b.dataset.orientation;
+ document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=true;x.classList.toggle('active',x===b)});
+ updatePolygonStatus();
+}));
+document.getElementById('addPolygon').addEventListener('click',()=>addPolygonToSurface(baseSurface(hovered)));
+document.getElementById('resetPolygons').addEventListener('click',()=>{
+ surfaces.forEach(surface=>{for(let i=surface.children.length-1;i>=0;i--){const child=surface.children[i];if(child.userData?.baseSurface===surface)surface.remove(child)}});
+ polygonCounts.clear();polygonOrientation=null;
+ document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=false;x.classList.remove('active')});
+ updatePolygonStatus();
+});
 document.getElementById('addCart').addEventListener('click',()=>{
  const size=document.querySelector('.size-option.active')?.textContent.trim()||'Small';
  const item={product:'Messenger Bag',size,addedAt:new Date().toISOString()};
- const cart=JSON.parse(localStorage.getItem('lexisTreeFortCart')||'[]'); cart.push(item); localStorage.setItem('lexisTreeFortCart',JSON.stringify(cart));
- const button=document.getElementById('addCart'); button.textContent='Added to Cart!'; setTimeout(()=>button.textContent='Add to Cart!',1400);
+ const cart=JSON.parse(localStorage.getItem('lexisTreeFortCart')||'[]');cart.push(item);localStorage.setItem('lexisTreeFortCart',JSON.stringify(cart));
+ const button=document.getElementById('addCart');button.textContent='Added to Cart!';setTimeout(()=>button.textContent='Add to Cart!',1400);
 });
 function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
 addEventListener('resize',resize);
