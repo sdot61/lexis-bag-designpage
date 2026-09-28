@@ -211,6 +211,7 @@ group.scale.set(.78,.78,.78); group.position.y=-.35; group.rotation.set(0,-.28,0
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 let hovered=null,selectedSurface=null,selectedTarget=null,targetSpeed=0,targetPitch=0,polygonOrientation=null;
 let draggingHandle=null,dragPlane=null,dragStart=null;
+ray.params.Line.threshold=.035;
 const polygonCounts=new Map();
 const polygonRecords=new Map();
 const surfaceTool=document.getElementById('surfaceTool');
@@ -271,10 +272,10 @@ function updatePolygonStatus(){
  else polygonPickerToggle.innerHTML='Choose Shape <span>▾</span>';
 }
 const shapeTemplates={
- slight:[.00,.20,.92,1.00],
- medium:[.08,.20,1.00,.92],
- strong:[.16,.20,1.00,.84],
- wide:[.00,.16,1.00,.84]
+ slight:.06,
+ medium:.11,
+ strong:.17,
+ wide:.23
 };
 function rebuildShape(record){
  const surface=record.surface, w=surface.userData.width,h=surface.userData.height;
@@ -282,48 +283,49 @@ function rebuildShape(record){
  const left=record.start*w-w/2+inset;
  const right=record.end*w-w/2-inset;
  const span=Math.max(.0001,right-left);
- const t=shapeTemplates[record.shapeName]||shapeTemplates.medium;
- const dir=polygonOrientation==='right'?1:-1;
- const slant=Math.min(span*.18,w*.035)*dir;
+ const slant=Math.min(span*.38,w*.12)*(polygonOrientation==='right'?1:-1);
  const shape=new THREE.Shape();
- shape.moveTo(left+span*t[0],-h/2+inset);
- shape.lineTo(left+span*t[1],-h/2+inset);
- shape.lineTo(left+span*t[3]+slant,h/2-inset);
- shape.lineTo(left+span*t[2]+slant,h/2-inset);
+ shape.moveTo(left,-h/2+inset);
+ shape.lineTo(right,-h/2+inset);
+ shape.lineTo(right+slant,h/2-inset);
+ shape.lineTo(left+slant,h/2-inset);
  shape.closePath();
  if(record.mesh)surface.remove(record.mesh);
  if(record.handle)surface.remove(record.handle);
- record.mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),new THREE.MeshBasicMaterial({color:record.color||0xffffff,side:THREE.DoubleSide}));
+ record.mesh=new THREE.Mesh(
+   new THREE.ShapeGeometry(shape),
+   new THREE.MeshBasicMaterial({color:record.color||0xd9f5f5,side:THREE.DoubleSide})
+ );
  record.mesh.userData.baseSurface=surface;
  record.mesh.userData.shapeRecord=record;
  record.mesh.userData.surface=surface.userData.surface+' shape '+(record.index+1);
- record.mesh.userData.designColor=record.color||0xffffff;
+ record.mesh.userData.designColor=record.color||0xd9f5f5;
  if(record.texture){
    record.mesh.material.map=record.texture;
    record.mesh.material.color.set(0xffffff);
  }
- record.mesh.position.z=.171;
+ record.mesh.position.z=.24;
  surface.add(record.mesh);
  if(record.edge)surface.remove(record.edge);
  const edgePoints=[
-   new THREE.Vector3(left+span*t[0],-h/2+inset,.179),
-   new THREE.Vector3(left+span*t[1],-h/2+inset,.179),
-   new THREE.Vector3(left+span*t[3]+slant,h/2-inset,.179),
-   new THREE.Vector3(left+span*t[2]+slant,h/2-inset,.179),
-   new THREE.Vector3(left+span*t[0],-h/2+inset,.179)
+   new THREE.Vector3(left,-h/2+inset,.249),
+   new THREE.Vector3(right,-h/2+inset,.249),
+   new THREE.Vector3(right+slant,h/2-inset,.249),
+   new THREE.Vector3(left+slant,h/2-inset,.249),
+   new THREE.Vector3(left,-h/2+inset,.249)
  ];
  record.edge=new THREE.Line(new THREE.BufferGeometry().setFromPoints(edgePoints),new THREE.LineBasicMaterial({color:0x000000}));
+ record.edge.userData.shapeRecord=record;
  surface.add(record.edge);
  const lineMat=new THREE.LineBasicMaterial({color:0x000000});
  const lineGeo=new THREE.BufferGeometry().setFromPoints([
-   new THREE.Vector3(right,-h/2+inset,.178),
-   new THREE.Vector3(right,h/2-inset,.178)
+   new THREE.Vector3(right,-h/2+inset,.251),
+   new THREE.Vector3(right,h/2-inset,.251)
  ]);
  record.handle=new THREE.Line(lineGeo,lineMat);
  record.handle.userData.shapeRecord=record;
  record.handle.userData.isShapeHandle=true;
  surface.add(record.handle);
- record.edge.userData.shapeRecord=record;
 }
 function rebuildSurface(surface){
  const records=polygonRecords.get(surface)||[];
@@ -337,7 +339,7 @@ function addPolygonToSurface(surface,shapeName){
  const start=records.length?records[records.length-1].end:0;
  const end=Math.min(1,start+minUnit);
  if(end<=start)return;
- const record={surface,index:records.length,start,end,shapeName,color:0xffffff,texture:null};
+ const record={surface,index:records.length,start,end,shapeName,color:0xd9f5f5,texture:null};
  records.push(record);
  polygonRecords.set(surface,records);
  selectedTarget=null;
@@ -379,10 +381,12 @@ canvas.addEventListener('pointermove',e=>{
  const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
  pointer.x=x*2-1;pointer.y=-y*2+1;
  if(draggingHandle){updateDraggedShape(e);targetSpeed=0;targetPitch=0;return}
+ const recordsForSurface=selectedSurface?(polygonRecords.get(selectedSurface)||[]):[];
+ const shapeWorkActive=!!polygonOrientation||recordsForSurface.length>0;
  const edge=Math.max(0,(Math.abs(x-.5)-.32)/.18);
- targetSpeed=(x<.18?1:x>.82?-1:0)*edge*.018;
+ targetSpeed=shapeWorkActive?0:(x<.18?1:x>.82?-1:0)*edge*.018;
  const verticalEdge=Math.max(0,(Math.abs(y-.5)-.32)/.18);
- targetPitch=(y<.18?-.018:y>.82?.018:0)*verticalEdge;
+ targetPitch=shapeWorkActive?0:(y<.18?-.018:y>.82?.018:0)*verticalEdge;
  ray.setFromCamera(pointer,camera);
  const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
  if(hit!==hovered){hover(hovered,false);hovered=hit;if(hovered)hover(hovered,true)}
@@ -415,7 +419,7 @@ canvas.addEventListener('click',e=>{
  const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
  if(hit)openSurfaceTool(baseSurface(hit),hit,e.clientX,e.clientY);
 });
-canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0;targetPitch=0});
+canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0;targetPitch=0;canvas.classList.remove('shape-cursor')});
 polygonPickerToggle.addEventListener('click',e=>{e.stopPropagation();polygonMenu.classList.toggle('open')});
 document.querySelectorAll('.polygon-choice').forEach(b=>b.addEventListener('click',e=>{
  e.stopPropagation();addPolygonToSurface(selectedSurface,b.dataset.shape);
