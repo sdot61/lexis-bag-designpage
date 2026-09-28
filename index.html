@@ -27,10 +27,8 @@
 
     body {
       font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-      background-color: #faf9f6;
+      background-color: #ffffff;
       color: var(--ltf-dark);
-      position: relative;
-      overflow-x: hidden;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -73,7 +71,7 @@
       z-index: 10;
       width: 100%;
       text-align: center;
-      padding-top: 25px;
+      padding-top: 18px;
     }
 
     .nav-bar {
@@ -83,13 +81,14 @@
       gap: 14px;
       font-size: 0.95rem;
       letter-spacing: 1px;
+      margin-top: 12px;
       margin-bottom: 24px;
     }
 
     .nav-bar a {
       color: #333333;
       text-decoration: none;
-      font-weight: 500;
+      font-weight: 400;
       transition: color 0.2s;
     }
 
@@ -98,8 +97,8 @@
     }
 
     .nav-bar a.active {
-      color: var(--ltf-pink);
-      font-weight: 700;
+      color: #333333;
+      font-weight: 400;
     }
 
     .nav-dot {
@@ -112,51 +111,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 15px;
-      margin-bottom: 20px;
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
     .header-banner img {
-      max-width: 320px;
-      width: 85%;
+      max-width: 150px;
+      width: 40%;
       height: auto;
-      border-radius: 4px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      border-radius: 0;
+      box-shadow: none;
     }
 
     /* LTF Logo Badge & Etsy Button */
-    .brand-title-badge {
-      display: inline-block;
-      font-size: 1.6rem;
-      font-weight: 900;
-      letter-spacing: 2px;
-      color: var(--ltf-teal);
-      text-transform: uppercase;
-      margin-top: 5px;
-    }
 
-    .brand-title-badge span {
-      color: var(--ltf-pink);
-    }
 
-    .etsy-btn {
-      display: inline-block;
-      background: #111111;
-      color: #ffffff;
-      padding: 10px 24px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-decoration: none;
-      border-radius: 4px;
-      text-transform: uppercase;
-      transition: background-color 0.2s, transform 0.1s;
-      margin-top: 6px;
-    }
 
-    .etsy-btn:hover {
-      background: var(--ltf-pink);
-    }
 
     /* ========================================================
        WHITE SPACE BODY / WORKSPACE AREA
@@ -166,23 +136,22 @@
       z-index: 10;
       flex: 1;
       width: 100%;
-      max-width: var(--site-width);
-      margin: 20px auto 60px auto;
+      max-width: 1180px;
+      margin: 10px auto 70px auto;
       padding: 0 20px;
     }
 
     .white-workspace {
       background-color: #ffffff;
-      border-radius: 8px;
-      min-height: 520px;
+      min-height: 760px;
       width: 100%;
-      padding: 40px 30px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
-      border: 1px solid rgba(0, 0, 0, 0.04);
+      padding: 45px 35px;
+      border: none;
+      box-shadow: none;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       text-align: center;
     }
 
@@ -191,24 +160,24 @@
       font-weight: 700;
       letter-spacing: 1px;
       color: #333333;
-      margin-bottom: 12px;
+      margin-bottom: 30px;
       text-transform: uppercase;
     }
 
     .workspace-placeholder-box {
       width: 100%;
-      max-width: 600px;
-      min-height: 280px;
-      border: 2px dashed #d1d5db;
-      border-radius: 8px;
-      background: #fbfbfb;
+      max-width: 1050px;
+      min-height: 620px;
+      border: none;
+      border-radius: 0;
+      background: #ffffff;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #9ca3af;
+      color: #ffffff;
       padding: 20px;
-      margin-top: 15px;
+      margin-top: 0;
     }
 
     /* ========================================================
@@ -246,48 +215,24 @@
 </head>
 <body>
 
-  <!-- CASCADING BACKGROUND SHAPES (BEHIND CONTENT) -->
-  <div class="shape-layer">
-    <!-- Shape 1: Teal polygon -->
-    <svg class="shape shape-1" viewBox="0 0 100 100"><polygon points="0,20 80,0 100,70 20,100"/></svg>
-    <!-- Shape 2: Pink polygon -->
-    <svg class="shape shape-2" viewBox="0 0 100 100"><polygon points="20,0 100,20 80,100 0,70"/></svg>
-    <!-- Shape 3: Yellow triangle -->
-    <svg class="shape shape-3" viewBox="0 0 100 100"><polygon points="50,0 100,100 0,90"/></svg>
-    <!-- Shape 4: Teal diamond -->
-    <svg class="shape shape-4" viewBox="0 0 100 100"><polygon points="50,0 100,50 50,100 0,50"/></svg>
-    <!-- Shape 5: Orange polygon -->
-    <svg class="shape shape-5" viewBox="0 0 100 100"><polygon points="10,20 90,0 100,80 10,100"/></svg>
-    <!-- Shape 6: Purple polygon -->
-    <svg class="shape shape-6" viewBox="0 0 100 100"><polygon points="0,30 70,0 100,80 30,100"/></svg>
-    <!-- Shape 7: Pink diamond -->
-    <svg class="shape shape-7" viewBox="0 0 100 100"><polygon points="50,0 100,50 50,100 0,50"/></svg>
-  </div>
-
-  <!-- SITE HEADER & NAV -->
+<!-- SITE HEADER & NAV -->
   <header>
     <!-- Navigation Links -->
     <nav class="nav-bar">
       <a href="https://www.lexistreefort.com/">Home</a>
       <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/shop">Shop</a>
+      <a href="https://www.lexistreefort.com/shop-1">Shop</a>
       <span class="nav-dot">·</span>
       <a href="https://www.lexistreefort.com/about">About</a>
       <span class="nav-dot">·</span>
       <a href="https://www.lexistreefort.com/events">Events</a>
       <span class="nav-dot">·</span>
-      <a href="https://www.lexistreefort.com/signup">Signup</a>
-      <span class="nav-dot">·</span>
-      <a href="#" class="active">Design</a>
+      <a href="https://www.lexistreefort.com/contact">Contact</a>
     </nav>
 
-    <!-- Header Banner Image & Logo -->
+    <!-- Site logo -->
     <div class="header-banner">
-      <img src="https://static.wixstatic.com/media/9a6a14_a3ab275938d54926930057ca4b9612eb~mv2.jpg/v1/crop/x_42,y_222,w_5977,h_4500/fill/w_320,h_240,al_c,q_80,usm_0.66_1.00_0.01,enc_avif,quality_auto/Machine%20Sign%20Foam%20Board3.jpg" alt="Lexi's Tree Fort Sign">
-      
-      <div class="brand-title-badge">Lexi's <span>Tree Fort</span></div>
-
-      <a href="https://www.etsy.com/shop/LexisTreeFort" target="_blank" class="etsy-btn">SHOP ON ETSY</a>
+      <img src="https://static.wixstatic.com/media/9a6a14_b0a7629f76d040879556d83d4db846db~mv2.jpg/v1/crop/x_5,y_0,w_604,h_672/fill/w_150,h_167,al_c,q_80,usm_0.66_1.00_0.01/LTF_logoTealPink.jpg" alt="Lexi's Tree Fort">
     </div>
   </header>
 
@@ -295,9 +240,7 @@
   <main>
     <div class="white-workspace">
       <h1 class="workspace-title">Custom Bag Designer</h1>
-      <p style="color: #64748b; font-size: 0.95rem;">Interactive merchandise workspace</p>
-
-      <div class="workspace-placeholder-box">
+<div class="workspace-placeholder-box">
         <p>[ Custom Bag Design Application Area ]</p>
       </div>
     </div>
