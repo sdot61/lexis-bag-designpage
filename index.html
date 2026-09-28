@@ -129,7 +129,7 @@ function roundedPanel(name,w,h,r,z,x=0,rotationY=0){
   shape.lineTo(-w/2+r,h/2); shape.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);
   shape.lineTo(-w/2,-h/2+r); shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);
   const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
-  const mesh=new THREE.Mesh(geo,white()); mesh.userData.surface=name; mesh.userData.width=w; mesh.userData.height=h;
+  const mesh=new THREE.Mesh(geo,white()); mesh.userData.surface=name; mesh.userData.width=w; mesh.userData.height=h; mesh.userData.clipPolygon=shape.getPoints(24).map(p=>p.clone());
   const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),black());
   const pair=new THREE.Group();
   pair.position.set(x,0,z);
@@ -158,7 +158,7 @@ bottomShape.quadraticCurveTo(.8,.42,0,.45);
 bottomShape.quadraticCurveTo(-.8,.42,-1.55,.22);
 bottomShape.closePath();
 const bottomGeo=new THREE.ExtrudeGeometry(bottomShape,{depth:.12,bevelEnabled:true,bevelSegments:4,bevelSize:.05,bevelThickness:.04,curveSegments:12});
-const bottom=new THREE.Mesh(bottomGeo,white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom'; bottom.userData.width=3.10; bottom.userData.height=.90;
+const bottom=new THREE.Mesh(bottomGeo,white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom'; bottom.userData.width=3.10; bottom.userData.height=.90; bottom.userData.clipPolygon=bottomShape.getPoints(24).map(p=>p.clone());
 const bottomEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bottomGeo,12),black()); bottomEdges.position.copy(bottom.position); bottomEdges.rotation.copy(bottom.rotation);
 group.add(bottom,bottomEdges); surfaces.push(bottom);
 
@@ -174,7 +174,7 @@ flapShape.lineTo(-1.28,.56);
 flapShape.quadraticCurveTo(-1.48,.56,-1.55,.42);
 flapShape.closePath();
 const flapGeo=new THREE.ExtrudeGeometry(flapShape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
-const flap=new THREE.Mesh(flapGeo,white()); flap.position.set(0,1.70,.47); flap.rotation.x=-.16; flap.userData.surface='front cover'; flap.userData.width=3.10; flap.userData.height=1.14;
+const flap=new THREE.Mesh(flapGeo,white()); flap.position.set(0,1.70,.47); flap.rotation.x=-.16; flap.userData.surface='front cover'; flap.userData.width=3.10; flap.userData.height=1.14; flap.userData.clipPolygon=flapShape.getPoints(24).map(p=>p.clone());
 const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flapGeo,12),black()); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation);
 group.add(flap,flapEdges); surfaces.push(flap);
 
@@ -188,6 +188,7 @@ hinge.userData.surface='hinge';
 hinge.userData.width=3.05;
 hinge.userData.height=.34;
 hinge.userData.noPolygons=true;
+hinge.userData.clipPolygon=[new THREE.Vector2(-3.05/2,-.34/2),new THREE.Vector2(3.05/2,-.34/2),new THREE.Vector2(3.05/2,.34/2),new THREE.Vector2(-3.05/2,.34/2)];
 const hingeEdges=new THREE.LineSegments(new THREE.EdgesGeometry(hingeGeo),black());
 hingeEdges.position.copy(hinge.position);
 group.add(hinge,hingeEdges);
@@ -267,10 +268,10 @@ function updatePolygonStatus(){
    return;
  }
  polygonOrientation=surfaceOrientations.get(base)||null;
- status.textContent=base.userData.surface+' · '+records.length+'/5 shapes'+(polygonOrientation?' · '+polygonOrientation+' angle':'');
- polygonPicker.classList.toggle('visible',!!polygonOrientation&&records.length<5);
+ status.textContent=base.userData.surface+' · '+records.length+'/4 shapes'+(polygonOrientation?' · '+polygonOrientation+' angle':'');
+ polygonPicker.classList.toggle('visible',!!polygonOrientation&&records.length<4);
  deleteShapeButton.classList.toggle('visible',!!selectedTarget?.userData?.shapeRecord);
- if(records.length>=5) polygonPickerToggle.textContent='Maximum reached';
+ if(records.length>=4) polygonPickerToggle.textContent='Maximum reached';
  else polygonPickerToggle.innerHTML='Choose Shape <span>▾</span>';
  document.querySelectorAll('.orientation-option').forEach(x=>{
    x.disabled=!!polygonOrientation||records.length>0;
@@ -309,6 +310,39 @@ function clipPolygon(points,axis,value,keepGreater){
   return out;
 }
 
+function clipAgainstConvexPolygon(points,clipPoints){
+  if(!clipPoints?.length)return points;
+  let subject=points.map(p=>p.clone());
+  let area=0;
+  for(let i=0;i<clipPoints.length;i++){
+    const a=clipPoints[i],b=clipPoints[(i+1)%clipPoints.length];
+    area+=a.x*b.y-b.x*a.y;
+  }
+  const winding=area>=0?1:-1;
+  for(let i=0;i<clipPoints.length;i++){
+    if(subject.length<3)break;
+    const A=clipPoints[i],B=clipPoints[(i+1)%clipPoints.length];
+    const next=[];
+    for(let j=0;j<subject.length;j++){
+      const P=subject[j],Q=subject[(j+1)%subject.length];
+      const crossP=(B.x-A.x)*(P.y-A.y)-(B.y-A.y)*(P.x-A.x);
+      const crossQ=(B.x-A.x)*(Q.y-A.y)-(B.y-A.y)*(Q.x-A.x);
+      const pIn=crossP*winding>=-1e-9;
+      const qIn=crossQ*winding>=-1e-9;
+      if(pIn!==qIn){
+        const denom=crossP-crossQ;
+        if(Math.abs(denom)>1e-12){
+          const t=crossP/denom;
+          next.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
+        }
+      }
+      if(qIn)next.push(Q.clone());
+    }
+    subject=next;
+  }
+  return subject;
+}
+
 function rebuildShape(record){
   const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
   const bottom=-h/2,top=h/2;
@@ -333,15 +367,21 @@ function rebuildShape(record){
   // Clip the actual shape against the surface. Anything outside is not
   // rendered. This naturally eats corners at the top/bottom and produces
   // polygons where a corner reaches a surface corner.
-  let clipped=raw;
-  // The surface boundary is an exact ownership boundary. If a shape reaches
-  // the same coordinate as the surface, that edge belongs to the shape.
-  // Do not inset the clip: doing so leaves a visible strip of surface beneath
-  // or beyond a shape.
-  clipped=clipPolygon(clipped,'x',-w/2,true);
-  clipped=clipPolygon(clipped,'x',w/2,false);
-  clipped=clipPolygon(clipped,'y',bottom,true);
-  clipped=clipPolygon(clipped,'y',top,false);
+  // Clip against the actual surface silhouette, not merely its rectangular
+  // bounds. This makes rounded corners and custom surfaces true ownership
+  // boundaries: when a shape reaches the surface contour, the surface owns
+  // nothing beyond that contour.
+  let clipped=record.surface.userData.clipPolygon
+    ? clipAgainstConvexPolygon(raw,record.surface.userData.clipPolygon)
+    : raw;
+  // Keep exact rectangular fallback behavior for any surface without a
+  // contour definition.
+  if(!record.surface.userData.clipPolygon){
+    clipped=clipPolygon(clipped,'x',-w/2,true);
+    clipped=clipPolygon(clipped,'x',w/2,false);
+    clipped=clipPolygon(clipped,'y',bottom,true);
+    clipped=clipPolygon(clipped,'y',top,false);
+  }
   if(clipped.length<3)return;
 
   const shape=new THREE.Shape();
@@ -384,12 +424,13 @@ function rebuildShape(record){
   ];
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints),
-    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:0})
+    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
   );
   record.handle.userData.shapeRecord=record;
   record.handle.userData.isShapeHandle=true;
   record.handle.userData.isBoundaryHandle=true;
   record.handle.userData.isWorkingHandle=true;
+  record.handle.renderOrder=20;
   surface.add(record.handle);
 }
 
@@ -402,7 +443,7 @@ function addPolygonToSurface(surface,shapeName){
   if(!surface||surface.userData.noPolygons)return;
   const records=polygonRecords.get(surface)||[];
   const orientation=surfaceOrientations.get(surface);
-  if(records.length>=5||!orientation)return;
+  if(records.length>=4||!orientation)return;
 
   const minUnit=1/5;
   const w=surface.userData.width;
@@ -413,8 +454,10 @@ function addPolygonToSurface(surface,shapeName){
     leftBoundary=records[records.length-1].rightBoundary;
   }else{
     const shift=w*(shapeTemplates[shapeName]??.085)*(orientation==='left'?-1:1);
-    // The first shape is centered on the extreme left edge. Its outer
-    // corners therefore start outside the surface and are clipped away.
+    // The first shape's working geometry is centered on the surface's left
+    // edge: the midpoint of its left boundary is exactly x=-w/2. The portions
+    // of that boundary outside the surface are intentionally clipped, so the
+    // surface can never appear to the left of the shape's owned edge.
     leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
   }
 
@@ -528,8 +571,10 @@ canvas.addEventListener('click',e=>{
  ray.setFromCamera(new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-(((e.clientY-r.top)/r.height)*2-1)),camera);
  const selectable=surfaces.concat([...polygonRecords.values()].flat().map(r=>r.mesh).filter(Boolean));
  const hits=ray.intersectObjects(selectable,true);
- const shapeHit=hits.find(x=>x.object?.userData?.shapeRecord)?.object||null;
- const hit=shapeHit||hits[0]?.object||null;
+ // Raycaster intersections are sorted nearest-first. Do not search for an
+ // arbitrary shape hit: doing so could select a shape on a farther surface
+ // instead of the actual surface under the cursor.
+ const hit=hits[0]?.object||null;
  if(hit?.userData?.isWorkingHandle)return;
  if(hit){
    const base=baseSurface(hit);
@@ -571,7 +616,11 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
  e.stopPropagation();
  if(!selectedSurface||selectedSurface.userData.noPolygons)return;
  const records=polygonRecords.get(selectedSurface)||[];
- records.forEach(r=>{if(r.mesh)selectedSurface.remove(r.mesh);if(r.edge&&r.edge!==r.mesh)selectedSurface.remove(r.edge)});
+ records.forEach(r=>{
+   if(r.mesh)selectedSurface.remove(r.mesh);
+   if(r.handle)selectedSurface.remove(r.handle);
+   if(r.edge)selectedSurface.remove(r.edge);
+ });
  polygonRecords.set(selectedSurface,[]);
  surfaceOrientations.delete(selectedSurface);
  polygonOrientation=null;selectedTarget=null;
