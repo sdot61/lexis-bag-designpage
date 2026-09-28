@@ -87,7 +87,7 @@ const surfaces=[];
 const white=()=>new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
 const black=()=>new THREE.LineBasicMaterial({color:0x000000});
 
-function roundedPanel(name,w,h,r,z,x=0){
+function roundedPanel(name,w,h,r,z,x=0,rotationY=0){
   const shape=new THREE.Shape();
   shape.moveTo(-w/2+r,-h/2); shape.lineTo(w/2-r,-h/2);
   shape.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);
@@ -95,21 +95,25 @@ function roundedPanel(name,w,h,r,z,x=0){
   shape.lineTo(-w/2+r,h/2); shape.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);
   shape.lineTo(-w/2,-h/2+r); shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);
   const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:4,bevelSize:.06,bevelThickness:.045,curveSegments:12});
-  const mesh=new THREE.Mesh(geo,white()); mesh.position.set(x,0,z); mesh.userData.surface=name;
-  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),black()); edges.position.copy(mesh.position);
-  const pair=new THREE.Group(); pair.add(mesh,edges); group.add(pair); surfaces.push(mesh);
+  const mesh=new THREE.Mesh(geo,white()); mesh.userData.surface=name;
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,12),black());
+  const pair=new THREE.Group();
+  pair.position.set(x,0,z);
+  pair.rotation.y=rotationY;
+  pair.add(mesh,edges); group.add(pair); surfaces.push(mesh);
   return pair;
 }
 
 // All bag panels have rounded corners and complete perimeter outlines.
 roundedPanel('front',3.45,2.45,.30,.55);
 roundedPanel('back',3.45,2.45,.30,-.62);
-// Width panels are anchored at the two perimeter edges of the front/back faces.
-// Each panel extends inward from its edge so the full surface sits between those faces.
-const side1=roundedPanel('side 1',1.17,2.18,.24,-.035,-1.725);
-const side2=roundedPanel('side 2',1.17,2.18,.24,-.035,1.725);
-side1.rotation.y=Math.PI/2;
-side2.rotation.y=-Math.PI/2;
+
+// The bag is a rounded rectangular prism:
+// X = length (left/right), Y = height, Z = width (front/back).
+// Side panels are Height × Width surfaces at the two extreme X boundaries.
+// Their positions stay fixed at those boundaries while the panel itself spans Z.
+roundedPanel('side 1',1.17,2.18,.24,-.035,-1.725,Math.PI/2);
+roundedPanel('side 2',1.17,2.18,.24,-.035,1.725,Math.PI/2);
 
 const bottomShape=new THREE.Shape();
 bottomShape.moveTo(-1.55,-.22);
