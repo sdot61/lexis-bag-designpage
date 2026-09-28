@@ -443,7 +443,7 @@ function updateDraggedShape(e){
  // Keep the preceding shape at least one unit wide, while allowing
  // the first shape to extend beyond the surface so the surface itself
  // clips the visible contour.
- let minStart=0;
+ let minStart=i===0?-1:records[i-1].start+minUnit;
  if(i>0){
    minStart=records[i-1].start+minUnit;
  }
