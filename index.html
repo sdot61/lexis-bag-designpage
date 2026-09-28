@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design Custom Merchandise | Lexi's Treefort Prototype</title>
+  <link rel="icon" sizes="192x192" href="https://static.wixstatic.com/media/9a6a14_328588a7a3164b9e933af5b16a632ddb~mv2.jpg/v1/fill/w_192,h_192,lg_1,usm_0.66_1.00_0.01/9a6a14_328588a7a3164b9e933af5b16a632ddb~mv2.jpg" type="image/jpeg"/>
+  <style>
+    :root { --site-width: 980px; --header-height: 80px; --primary-color: #111111; --bg-color: #ffffff; --font-family: Arial, Helvetica, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-family); background: var(--bg-color); color: var(--primary-color); display: flex; flex-direction: column; min-height: 100vh; }
+    #SITE_HEADER { width: 100%; height: var(--header-height); border-bottom: 1px solid #eaeaea; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; background: #fff; position: sticky; top: 0; z-index: 100; }
+    .brand-logo { font-weight: bold; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; color: var(--primary-color); }
+    .nav-menu { display: flex; gap: 24px; list-style: none; }
+    .nav-menu a { text-decoration: none; color: #555; font-size: .95rem; }
+    .nav-menu a:hover, .nav-menu a.active { color: var(--primary-color); font-weight: bold; }
+    #DESIGN_CANVAS_WORKSPACE { flex: 1; width: 100%; max-width: var(--site-width); margin: 0 auto; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .workspace-placeholder { width: 100%; min-height: 500px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #888; background: #fafafa; }
+    #SITE_FOOTER { width: 100%; padding: 20px; text-align: center; font-size: .8rem; color: #777; border-top: 1px solid #eaeaea; background: #fff; }
+  </style>
+</head>
+<body>
+  <header id="SITE_HEADER">
+    <a href="./" class="brand-logo">Lexi's Treefort</a>
+    <nav><ul class="nav-menu"><li><a href="./">Home</a></li><li><a href="./" class="active">Design</a></li></ul></nav>
+  </header>
+  <main id="DESIGN_CANVAS_WORKSPACE">
+    <div class="workspace-placeholder"><p>[ Bag Merchandise Design Application Workspace ]</p></div>
+  </main>
+  <footer id="SITE_FOOTER"><p>&copy; 2026 Lexi's Treefort. All Rights Reserved.</p></footer>
+</body>
+</html>
