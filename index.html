@@ -403,11 +403,13 @@ function rebuildShape(record){
     record.mesh.material.map=record.texture;
     record.mesh.material.color.set(0xffffff);
   }
-  record.mesh.position.z=.24;
+  const shapeZ=(surface.userData.surface==='front'||surface.userData.surface==='front cover'||surface.userData.surface==='hinge')?.24:-.24;
+  record.mesh.position.z=shapeZ;
   surface.add(record.mesh);
 
   // The visible outline is the actual clipped perimeter.
-  const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,.249));
+  const edgeZ=shapeZ+.009;
+  const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,edgeZ));
   edgePoints.push(edgePoints[0].clone());
   record.edge=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(edgePoints),
@@ -419,8 +421,8 @@ function rebuildShape(record){
   // Only the right boundary is a hit target. It is invisible, so the visible
   // boundary remains the actual shape edge rather than a second adjustment line.
   const handlePoints=[
-    new THREE.Vector3(record.rightBoundary.bottom,bottom,.255),
-    new THREE.Vector3(record.rightBoundary.top,top,.255)
+    new THREE.Vector3(record.rightBoundary.bottom,bottom,shapeZ+.015),
+    new THREE.Vector3(record.rightBoundary.top,top,shapeZ+.015)
   ];
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints),
