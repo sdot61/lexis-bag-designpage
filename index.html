@@ -52,9 +52,8 @@ footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.soc
 <div class="surface-tool" id="surfaceTool">
   <div class="surface-tool-title">Surface Design</div>
   <div class="polygon-status" id="polygonStatus">Select a surface.</div>
-  <div class="orientation-options">
-    <button class="orientation-option" data-orientation="right">Right ↗</button>
-    <button class="orientation-option" data-orientation="left">Left ↖</button>
+  <div class="orientation-options" id="orientationOptions">
+    <button class="orientation-option" data-orientation="select">Select Surface</button>
   </div>
   <div class="polygon-picker" id="polygonPicker">
     <button class="polygon-picker-toggle" id="polygonPickerToggle">Choose Shape <span>▾</span></button>
@@ -196,14 +195,14 @@ surfaces.push(hinge);
 
 // Exterior bridge surface: a separate, color-only rectangle sitting outside the bag
 // across the gap/border between the top flap and the back panel.
-const bridgeGeo=new THREE.PlaneGeometry(3.10,.42);
+const bridgeGeo=new THREE.PlaneGeometry(3.45,.72);
 const bridge=new THREE.Mesh(bridgeGeo,white());
 bridge.position.set(0,1.27,.735);
 bridge.userData.surface='flap-back bridge';
-bridge.userData.width=3.10;
-bridge.userData.height=.42;
+bridge.userData.width=3.45;
+bridge.userData.height=.72;
 bridge.userData.noPolygons=true;
-bridge.userData.clipPolygon=[new THREE.Vector2(-3.10/2,-.42/2),new THREE.Vector2(3.10/2,-.42/2),new THREE.Vector2(3.10/2,.42/2),new THREE.Vector2(-3.10/2,.42/2)];
+bridge.userData.clipPolygon=[new THREE.Vector2(-3.45/2,-.72/2),new THREE.Vector2(3.45/2,-.72/2),new THREE.Vector2(3.45/2,.72/2),new THREE.Vector2(-3.45/2,.72/2)];
 const bridgeEdges=new THREE.LineSegments(new THREE.EdgesGeometry(bridgeGeo),black());
 bridgeEdges.position.copy(bridge.position);
 group.add(bridge,bridgeEdges);
@@ -277,9 +276,10 @@ function updatePolygonStatus(){
  const records=base?(polygonRecords.get(base)||[]):[];
  if(!base){status.textContent='Select a surface.';polygonPicker.classList.remove('visible');deleteShapeButton.classList.remove('visible');return}
  if(base.userData.noPolygons){
-   status.textContent='Hinge · color only';
+   status.textContent=base.userData.surface==='flap-back bridge'?'Accessory · color only':'Hinge · color only';
    polygonPicker.classList.remove('visible');
    deleteShapeButton.classList.remove('visible');
+   document.querySelectorAll('.orientation-option').forEach(x=>x.classList.toggle('active',x.dataset.orientation==='select'&&base.userData.surface==='flap-back bridge'));
    return;
  }
  polygonOrientation=surfaceOrientations.get(base)||null;
@@ -648,14 +648,9 @@ document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
 }));
 document.querySelectorAll('.orientation-option').forEach(b=>b.addEventListener('click',e=>{
  e.stopPropagation();
- if(!selectedSurface||selectedSurface.userData.noPolygons)return;
- const records=polygonRecords.get(selectedSurface)||[];
- if(records.length)return;
- polygonOrientation=b.dataset.orientation;
- surfaceOrientations.set(selectedSurface,polygonOrientation);
- records.forEach(r=>r.orientation=polygonOrientation);
- rebuildSurface(selectedSurface);
- document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=true;x.classList.toggle('active',x===b)});
+ if(!selectedSurface||!selectedSurface.userData.noPolygons)return;
+ b.classList.add('active');
+ selectedTarget=selectedSurface;
  updatePolygonStatus();
 }));
 document.getElementById('resetPolygons').addEventListener('click',e=>{
