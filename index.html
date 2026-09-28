@@ -288,9 +288,9 @@ function rebuildShape(record){
  const orientation=record.orientation||surfaceOrientations.get(surface)||'right';
  const inset=Math.min(.045,w*.02,h*.02);
  const surfaceLeft=-w/2+inset, surfaceRight=w/2-inset;
- const allocationLeft=left, allocationRight=right;
  const left=record.start*w-w/2+inset;
  const right=record.end*w-w/2-inset;
+ const allocationLeft=left, allocationRight=right;
  const span=Math.max(.0001,right-left);
  const magnitude=Math.min(span*.38,w*.12)*(orientation==='right'?1:-1);
  const bottomShift=orientation==='right'?magnitude:-magnitude;
