@@ -69,44 +69,82 @@ footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.soc
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
-import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js';
 
-const canvas=document.getElementById('scene'), host=document.getElementById('designer');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(host.clientWidth,host.clientHeight,false);
-const scene=new THREE.Scene(); scene.background=new THREE.Color(0xffffff);
-const camera=new THREE.PerspectiveCamera(28,host.clientWidth/host.clientHeight,.1,100); camera.position.set(5.7,3.4,7.2);
-const controls=new OrbitControls(camera,canvas); controls.enableDamping=true; controls.enablePan=false; controls.minDistance=5; controls.maxDistance=10; controls.target.set(0,1,0); controls.minPolarAngle=.75; controls.maxPolarAngle=2.2;
+const canvas=document.getElementById('scene'),host=document.getElementById('designer');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(host.clientWidth,host.clientHeight,false);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(25,host.clientWidth/host.clientHeight,.1,100);
+camera.position.set(5.2,2.7,8.6);
+const controls=new OrbitControls(camera,canvas);
+controls.enableDamping=true; controls.enablePan=false; controls.minDistance=7; controls.maxDistance=12;
+controls.target.set(0,0,0);
 
-scene.add(new THREE.HemisphereLight(0xffffff,0xffffff,2));
 const group=new THREE.Group(); group.visible=false; scene.add(group);
-
 const surfaces=[];
-const mat=(color='#ffffff',hover=false)=>new THREE.MeshBasicMaterial({color:hover?'#d9f5f5':color,side:THREE.DoubleSide});
-function panel(name,w,h,d,position,rotation=[0,0,0]){
- const geo=new THREE.BoxGeometry(w,h,d); const mesh=new THREE.Mesh(geo,mat()); mesh.position.set(...position); mesh.rotation.set(...rotation); mesh.userData.surface=name;
- const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:0x000000,linewidth:1})); edges.position.copy(mesh.position); edges.rotation.copy(mesh.rotation); edges.scale.set(1.002,1.002,1.002); group.add(mesh,edges); surfaces.push(mesh); return mesh;
-}
-// A simple messenger bag: continuous box contours plus a hinged flap and strap.
-panel('front',4.5,3.0,.28,[0,1.55,0]);
-panel('back',4.5,3.0,.28,[0,1.55,-1.95]);
-panel('side 1',.28,3.0,1.95,[-2.11,1.55,-.98]);
-panel('side 2',.28,3.0,1.95,[2.11,1.55,-.98]);
-panel('bottom',4.5,.28,1.95,[0,.12,-.98]);
-const flapGeo=new THREE.BoxGeometry(4.5,1.55,.28); const flap=new THREE.Mesh(flapGeo,mat()); flap.position.set(0,3.75,-.05); flap.rotation.x=-.18; flap.userData.surface='front cover'; group.add(flap); surfaces.push(flap);
-const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flapGeo),new THREE.LineBasicMaterial({color:0x000000})); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation); group.add(flapEdges);
-const strapCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(-2.0,3.5,-.3),new THREE.Vector3(-3.0,5.0,-.8),new THREE.Vector3(0,5.8,-1.1),new THREE.Vector3(3.0,5.0,-.8),new THREE.Vector3(2.0,3.5,-.3)]);
-const strap=new THREE.Line(new THREE.BufferGeometry().setFromPoints(strapCurve.getPoints(48)),new THREE.LineBasicMaterial({color:0x000000})); group.add(strap);
-group.position.y=-1.15; group.rotation.y=-.35;
+const white=()=>new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
+const black=()=>new THREE.LineBasicMaterial({color:0x000000});
 
-const ray=new THREE.Raycaster(), pointer=new THREE.Vector2(); let hovered=null; let edgeDir=0; let targetSpeed=0;
-function setHover(obj,on){if(!obj)return; obj.material.color.set(on?'#d9f5f5':'#ffffff')}
-function pointerMove(e){const r=canvas.getBoundingClientRect(); pointer.x=((e.clientX-r.left)/r.width)*2-1; pointer.y=-((e.clientY-r.top)/r.height)*2+1; const x=(e.clientX-r.left)/r.width; edgeDir=x<.16?1:x>.84?-1:0; targetSpeed=edgeDir*(Math.max(0,Math.abs(x-.5)-.34)/.16)*.025; ray.setFromCamera(pointer,camera); const hit=ray.intersectObjects(surfaces,false)[0]?.object; if(hit!==hovered){setHover(hovered,false);hovered=hit||null;setHover(hovered,true);}}
-canvas.addEventListener('pointermove',pointerMove); canvas.addEventListener('pointerleave',()=>{setHover(hovered,false);hovered=null;edgeDir=0;targetSpeed=0});
-canvas.addEventListener('click',()=>{if(hovered) hovered.userData.selected=true});
-document.getElementById('messengerButton').addEventListener('click',()=>{group.visible=true});
-document.querySelectorAll('.size-option').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.size-option').forEach(x=>x.classList.remove('active'));b.classList.add('active');}));
-document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{if(hovered){hovered.material.color.set(b.dataset.color)}}));
-function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()} addEventListener('resize',resize);
+function roundedPanel(name,w,h,r,z){
+  const shape=new THREE.Shape();
+  shape.moveTo(-w/2+r,-h/2); shape.lineTo(w/2-r,-h/2);
+  shape.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);
+  shape.lineTo(w/2,h/2-r); shape.quadraticCurveTo(w/2,h/2,w/2-r,h/2);
+  shape.lineTo(-w/2+r,h/2); shape.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);
+  shape.lineTo(-w/2,-h/2+r); shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);
+  const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:3,bevelSize:.045,bevelThickness:.035,curveSegments:8});
+  const mesh=new THREE.Mesh(geo,white()); mesh.position.z=z; mesh.userData.surface=name;
+  const edges=new THREE.LineSegments(new THREE.EdgesGeometry(geo,20),black());
+  edges.position.copy(mesh.position); group.add(mesh,edges); surfaces.push(mesh);
+  return mesh;
+}
+
+// Compact, rounded messenger bag sized comfortably inside the design panel.
+roundedPanel('front',3.45,2.45,.28,.55);
+roundedPanel('back',3.45,2.45,.28,-.62);
+roundedPanel('side 1',.52,2.18,.18,-.03).position.x=-1.72;
+roundedPanel('side 2',.52,2.18,.18,-.03).position.x=1.72;
+const bottomShape=new THREE.Shape();
+bottomShape.moveTo(-1.55,-.22); bottomShape.quadraticCurveTo(0,-.42,1.55,-.22);
+bottomShape.lineTo(1.55,.22); bottomShape.quadraticCurveTo(0,.42,-1.55,.22); bottomShape.closePath();
+const bottom=new THREE.Mesh(new THREE.ShapeGeometry(bottomShape),white()); bottom.rotation.x=Math.PI/2; bottom.position.set(0,-1.22,-.03); bottom.userData.surface='bottom'; group.add(bottom); surfaces.push(bottom);
+const flap=new THREE.Mesh(new THREE.BoxGeometry(3.5,1.12,.18),white());
+flap.position.set(0,1.72,.47); flap.rotation.x=-.16; flap.userData.surface='front cover'; group.add(flap); surfaces.push(flap);
+const flapEdges=new THREE.LineSegments(new THREE.EdgesGeometry(flap.geometry,20),black()); flapEdges.position.copy(flap.position); flapEdges.rotation.copy(flap.rotation); group.add(flapEdges);
+
+// Rounded flap opening/contour line.
+const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-1.48,1.34,.59),new THREE.Vector3(0,1.05,.68),new THREE.Vector3(1.48,1.34,.59));
+group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(32)),black()));
+
+// Continuous rounded strap.
+const strapCurve=new THREE.CatmullRomCurve3([
+ new THREE.Vector3(-1.42,1.45,.15),new THREE.Vector3(-2.05,2.45,-.15),
+ new THREE.Vector3(-1.75,3.55,-.55),new THREE.Vector3(0,4.05,-.72),
+ new THREE.Vector3(1.75,3.55,-.55),new THREE.Vector3(2.05,2.45,-.15),
+ new THREE.Vector3(1.42,1.45,.15)
+]);
+const strapGeo=new THREE.TubeGeometry(strapCurve,48,.035,8,false);
+group.add(new THREE.LineSegments(new THREE.EdgesGeometry(strapGeo,25),black()));
+group.scale.set(.78,.78,.78); group.position.y=-.35; group.rotation.y=-.28;
+
+const ray=new THREE.Raycaster(),pointer=new THREE.Vector2(); let hovered=null,targetSpeed=0;
+function hover(obj,on){if(obj)obj.material.color.set(on?0xd9f5f5:0xffffff)}
+canvas.addEventListener('pointermove',e=>{
+ const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)/r.width;
+ pointer.x=x*2-1; pointer.y=-((e.clientY-r.top)/r.height)*2+1;
+ const edge=Math.max(0,(Math.abs(x-.5)-.32)/.18);
+ targetSpeed=(x<.18?1:x>.82?-1:0)*edge*.018;
+ ray.setFromCamera(pointer,camera);
+ const hit=ray.intersectObjects(surfaces,false)[0]?.object||null;
+ if(hit!==hovered){hover(hovered,false);hovered=hit;hover(hovered,true)}
+});
+canvas.addEventListener('pointerleave',()=>{hover(hovered,false);hovered=null;targetSpeed=0});
+document.getElementById('messengerButton').addEventListener('click',()=>group.visible=true);
+document.querySelectorAll('.size-option').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.size-option').forEach(x=>x.classList.remove('active'));b.classList.add('active')}));
+document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{if(hovered)hovered.material.color.set(b.dataset.color)}));
+function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);
 function animate(){requestAnimationFrame(animate);group.rotation.y+=targetSpeed;controls.update();renderer.render(scene,camera)} animate();
 </script>
 </body></html>
