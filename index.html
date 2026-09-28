@@ -286,19 +286,16 @@ const shapeTemplates={
 function rebuildShape(record){
  const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
  const orientation=record.orientation||surfaceOrientations.get(surface)||'right';
- const inset=Math.min(.045,w*.02,h*.02);
- const bottom=-h/2+inset, top=h/2-inset;
- const left=record.start*w-w/2+inset;
- const right=record.end*w-w/2+inset;
- const span=Math.max(.0001,right-left);
-
- // The selected template controls the slant. Orientation reverses the slant,
- // making Left and Right visibly distinct while keeping the boundary shared.
- const templateShift=Math.min(span*.70,w*.18);
+ const bottom=-h/2, top=h/2;
+ const span=Math.max(.0001,(record.end-record.start)*w);
+ const templateShift=Math.min(span*.70,w*(shapeTemplates[record.shapeName]??.11));
  const shift=templateShift*(orientation==='right'?1:-1);
-
- // The shape is allowed to extend beyond the surface. The surface clip below
- // produces the actual visible contour, including clipped corners at the edges.
+ // First shape: its left boundary midpoint is exactly on the surface's left edge.
+ // This intentionally puts part of the parallelogram outside the surface so the
+ // visible starting shape is clipped into a polygon. The right boundary is shared.
+ let left=record.start*w-w/2;
+ if(record.index===0) left=-w/2-shift/2;
+ const right=left+span;
  const raw=[
    new THREE.Vector2(left,bottom),
    new THREE.Vector2(right,bottom),
@@ -362,18 +359,13 @@ function rebuildShape(record){
  // The adjustment boundary is part of the shape itself. For Right orientation
  // it is the left edge that faces the next added shape; for Left orientation
  // it is the right edge. The line uses the exact same contour as the shape.
- const handleX=orientation==='right'?left:right;
- const handleShift=orientation==='right'?shift:-shift;
- const handlePoints=[
-   new THREE.Vector3(handleX,bottom,.251),
-   new THREE.Vector3(handleX+handleShift,top,.251)
- ];
- record.handle=new THREE.Line(new THREE.BufferGeometry().setFromPoints(handlePoints),
-   new THREE.LineBasicMaterial({color:0x000000}));
+ // The working boundary is the actual right edge of the shape. There is no
+ // second adjustment line; the shape's own edge is the draggable boundary.
+ record.handle=record.edge;
  record.handle.userData.shapeRecord=record;
  record.handle.userData.isShapeHandle=true;
  record.handle.userData.isBoundaryHandle=true;
- surface.add(record.handle);
+ record.handle.userData.isWorkingHandle=true;
 }
 function rebuildSurface(surface){
  const records=polygonRecords.get(surface)||[];
@@ -435,17 +427,10 @@ function updateDraggedShape(e){
 
  // The selected boundary is the side facing the next shape. Move only that
  // boundary; the opposite side of the shape remains anchored.
- if(record.orientation==='right'){
-   const minEnd=record.start+minUnit;
-   const maxEnd=i<records.length-1?records[i+1].end-minUnit:1;
-   record.end=Math.max(minEnd,Math.min(maxEnd,proposed));
-   for(let j=i+1;j<records.length;j++) records[j].start=records[j-1].end;
- }else{
-   const minStart=i>0?records[i-1].start+minUnit:0;
-   const maxStart=record.end-minUnit;
-   record.start=Math.max(minStart,Math.min(maxStart,proposed));
-   if(i>0)records[i-1].end=record.start;
- }
+ const minEnd=record.start+minUnit;
+ const maxEnd=i<records.length-1?records[i+1].end-minUnit:1.35;
+ record.end=Math.max(minEnd,Math.min(maxEnd,proposed));
+ for(let j=i+1;j<records.length;j++) records[j].start=records[j-1].end;
 
  rebuildSurface(surface);
  selectedTarget=record.mesh;
@@ -464,7 +449,7 @@ canvas.addEventListener('pointermove',e=>{
  ray.setFromCamera(pointer,camera);
  const hit=ray.intersectObjects(surfaces,true)[0]?.object||null;
  if(hit!==hovered){hover(hovered,false);hovered=hit;if(hovered)hover(hovered,true)}
- const handleHit=ray.intersectObjects(surfaces.flatMap(s=>(polygonRecords.get(s)||[]).map(r=>r.handle).filter(h=>h?.userData?.isLeftHandle)),true)[0]?.object;
+ const handleHit=ray.intersectObjects(surfaces.flatMap(s=>(polygonRecords.get(s)||[]).map(r=>r.handle).filter(h=>h?.userData?.isWorkingHandle)),true)[0]?.object;
  canvas.classList.toggle('shape-cursor',!!handleHit);
 });
 canvas.addEventListener('pointerdown',e=>{
@@ -473,7 +458,7 @@ canvas.addEventListener('pointerdown',e=>{
  ray.setFromCamera(pointer,camera);
  const handles=[];
  polygonRecords.forEach(records=>records.forEach(record=>{if(record.handle)handles.push(record.handle)}));
- const h=ray.intersectObjects(handles.filter(x=>x.userData?.isLeftHandle),true)[0]?.object;
+ const h=ray.intersectObjects(handles.filter(x=>x.userData?.isWorkingHandle),true)[0]?.object;
  if(h?.userData?.isShapeHandle){
    const record=h.userData.shapeRecord;
    targetSpeed=0; targetPitch=0;
@@ -496,7 +481,7 @@ canvas.addEventListener('click',e=>{
  const hits=ray.intersectObjects(selectable,true);
  const shapeHit=hits.find(x=>x.object?.userData?.shapeRecord)?.object||null;
  const hit=shapeHit||hits[0]?.object||null;
- if(hit?.userData?.isLeftHandle)return;
+ if(hit?.userData?.isWorkingHandle)return;
  if(hit){
    const base=baseSurface(hit);
    selectedTarget=hit;
@@ -537,8 +522,8 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
  e.stopPropagation();
  if(!selectedSurface||selectedSurface.userData.noPolygons)return;
  const records=polygonRecords.get(selectedSurface)||[];
- records.forEach(r=>{if(r.mesh)selectedSurface.remove(r.mesh);if(r.handle)selectedSurface.remove(r.handle);if(r.edge)selectedSurface.remove(r.edge)});
- polygonRecords.delete(selectedSurface);
+ records.forEach(r=>{if(r.mesh)selectedSurface.remove(r.mesh);if(r.edge&&r.edge!==r.mesh)selectedSurface.remove(r.edge)});
+ polygonRecords.set(selectedSurface,[]);
  surfaceOrientations.delete(selectedSurface);
  polygonOrientation=null;selectedTarget=null;
  document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=false;x.classList.remove('active')});
