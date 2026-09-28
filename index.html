@@ -1,32 +1,175 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Design Custom Merchandise | Lexi's Treefort Prototype</title>
-  <link rel="icon" sizes="192x192" href="https://static.wixstatic.com/media/9a6a14_328588a7a3164b9e933af5b16a632ddb~mv2.jpg/v1/fill/w_192,h_192,lg_1,usm_0.66_1.00_0.01/9a6a14_328588a7a3164b9e933af5b16a632ddb~mv2.jpg" type="image/jpeg"/>
-  <style>
-    :root { --site-width: 980px; --header-height: 80px; --primary-color: #111111; --bg-color: #ffffff; --font-family: Arial, Helvetica, sans-serif; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font-family); background: var(--bg-color); color: var(--primary-color); display: flex; flex-direction: column; min-height: 100vh; }
-    #SITE_HEADER { width: 100%; height: var(--header-height); border-bottom: 1px solid #eaeaea; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; background: #fff; position: sticky; top: 0; z-index: 100; }
-    .brand-logo { font-weight: bold; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; text-decoration: none; color: var(--primary-color); }
-    .nav-menu { display: flex; gap: 24px; list-style: none; }
-    .nav-menu a { text-decoration: none; color: #555; font-size: .95rem; }
-    .nav-menu a:hover, .nav-menu a.active { color: var(--primary-color); font-weight: bold; }
-    #DESIGN_CANVAS_WORKSPACE { flex: 1; width: 100%; max-width: var(--site-width); margin: 0 auto; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .workspace-placeholder { width: 100%; min-height: 500px; border: 2px dashed #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #888; background: #fafafa; }
-    #SITE_FOOTER { width: 100%; padding: 20px; text-align: center; font-size: .8rem; color: #777; border-top: 1px solid #eaeaea; background: #fff; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design a Custom Bag | Lexi's Tree Fort</title>
+<link rel="icon" href="https://static.wixstatic.com/media/9a6a14_b0a7629f76d040879556d83d4db846db~mv2.jpg">
+<style>
+:root{
+  --teal:#39b9bd;
+  --pink:#ef5d9b;
+  --yellow:#f6d45a;
+  --purple:#7856a6;
+  --orange:#f28b55;
+  --ink:#252525;
+  --paper:#fff;
+  --max:1100px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;overflow-x:hidden}
+a{color:inherit}
+.site-header{
+  position:relative;z-index:20;background:#fff;
+  min-height:150px;padding:18px 28px 8px;
+  display:flex;flex-direction:column;align-items:center;
+}
+.logo{display:block;width:min(245px,62vw);margin:0 auto 10px}
+.logo img{display:block;width:100%;height:auto}
+.nav{display:flex;flex-wrap:wrap;justify-content:center;gap:30px;font-size:15px;letter-spacing:.5px}
+.nav a{text-decoration:none}
+.nav a:hover{color:var(--pink)}
+.hero-art{
+  position:relative;z-index:3;width:100%;max-width:1100px;margin:0 auto;
+  padding:0 24px 20px;text-align:center;
+}
+.hero-art img{width:min(760px,100%);max-height:310px;object-fit:cover;display:block;margin:auto}
+.page{position:relative;min-height:1700px;padding:30px 24px 110px;overflow:hidden}
+.decor{position:absolute;pointer-events:none;z-index:0}
+.blob{border-radius:48% 52% 42% 58%/58% 44% 56% 42%;filter:saturate(.98)}
+.blob.one{width:390px;height:270px;background:var(--yellow);left:-150px;top:150px;transform:rotate(-18deg)}
+.blob.two{width:330px;height:420px;background:var(--pink);right:-145px;top:330px;transform:rotate(22deg)}
+.blob.three{width:420px;height:300px;background:var(--teal);left:-190px;top:780px;transform:rotate(16deg)}
+.blob.four{width:330px;height:450px;background:var(--purple);right:-130px;top:1040px;transform:rotate(-20deg)}
+.blob.five{width:310px;height:240px;background:var(--orange);left:38%;top:1430px;transform:rotate(-10deg)}
+.ring{width:220px;height:220px;border:34px solid var(--teal);border-radius:50%;right:8%;top:45px;opacity:.9}
+.star{width:115px;height:115px;background:var(--yellow);clip-path:polygon(50% 0%,61% 36%,98% 25%,70% 50%,98% 75%,61% 64%,50% 100%,39% 64%,2% 75%,30% 50%,2% 25%,39% 36%);left:8%;top:550px}
+.content{position:relative;z-index:5;max-width:850px;margin:0 auto}
+.intro{text-align:center;background:rgba(255,255,255,.92);padding:28px 30px;border-radius:18px}
+h1{font-size:36px;line-height:1.05;margin:0 0 12px}
+.intro p{font-size:17px;line-height:1.5;margin:0}
+.design-panel{
+  margin-top:45px;background:rgba(255,255,255,.97);border:3px solid var(--ink);
+  border-radius:24px;padding:28px;box-shadow:12px 14px 0 var(--pink);
+}
+.panel-title{text-align:center;margin-bottom:22px}
+.panel-title h2{margin:0 0 5px;font-size:25px}
+.panel-title p{margin:0;color:#666}
+.builder{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:stretch}
+.preview{
+  min-height:470px;border-radius:16px;background:#f5f5f5;
+  display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;
+  border:1px solid #ddd;
+}
+.bag{width:260px;height:210px;background:var(--teal);border-radius:22px 22px 30px 30px;position:relative;box-shadow:0 12px 0 rgba(0,0,0,.08)}
+.bag:before{content:"";position:absolute;width:110px;height:85px;border:12px solid var(--ink);border-bottom:0;border-radius:60px 60px 0 0;left:63px;top:-68px}
+.bag:after{content:"TREEFORT";position:absolute;left:0;right:0;top:82px;text-align:center;font-weight:bold;letter-spacing:2px;color:#fff;font-size:20px}
+.controls{display:flex;flex-direction:column;gap:15px}
+.control{border:1px solid #ddd;border-radius:13px;padding:15px;background:#fff}
+.control label{display:block;font-weight:bold;margin-bottom:9px}
+.swatches{display:flex;gap:10px}
+.swatch{width:34px;height:34px;border-radius:50%;border:2px solid #fff;outline:1px solid #bbb;cursor:pointer}
+.swatch.teal{background:var(--teal)}.swatch.pink{background:var(--pink)}.swatch.yellow{background:var(--yellow)}.swatch.purple{background:var(--purple)}.swatch.orange{background:var(--orange)}
+select,input[type=text]{width:100%;padding:10px;border:1px solid #bbb;border-radius:8px;background:#fff}
+.cta{display:inline-block;margin-top:8px;padding:12px 20px;border-radius:999px;background:var(--pink);text-decoration:none;font-weight:bold;border:2px solid var(--ink)}
+.gallery{position:relative;z-index:5;max-width:850px;margin:90px auto 0;display:grid;grid-template-columns:repeat(2,1fr);gap:25px}
+.gallery figure{margin:0;background:#fff;padding:10px;border-radius:16px;box-shadow:0 7px 18px rgba(0,0,0,.12)}
+.gallery img{width:100%;height:250px;object-fit:cover;border-radius:10px;display:block}
+.gallery figcaption{text-align:center;padding:10px 5px 4px;font-size:14px}
+.site-footer{position:relative;z-index:10;background:#fff;border-top:1px solid #ddd;text-align:center;padding:35px 20px 45px}
+.footer-shape{width:100%;height:28px;margin-bottom:22px;background:linear-gradient(135deg,transparent 25%,var(--yellow) 26%,var(--yellow) 42%,transparent 43%),linear-gradient(45deg,transparent 25%,var(--teal) 26%,var(--teal) 42%,transparent 43%);opacity:.9}
+.social{display:flex;justify-content:center;gap:22px;font-size:14px;margin-top:15px}
+@media(max-width:700px){
+ .site-header{min-height:130px}.nav{gap:15px;font-size:14px}
+ h1{font-size:29px}.page{padding-left:15px;padding-right:15px}
+ .builder{grid-template-columns:1fr}.preview{min-height:350px}
+ .gallery{grid-template-columns:1fr}.gallery img{height:220px}
+ .design-panel{padding:18px;box-shadow:7px 9px 0 var(--pink)}
+}
+</style>
 </head>
 <body>
-  <header id="SITE_HEADER">
-    <a href="./" class="brand-logo">Lexi's Treefort</a>
-    <nav><ul class="nav-menu"><li><a href="./">Home</a></li><li><a href="./" class="active">Design</a></li></ul></nav>
-  </header>
-  <main id="DESIGN_CANVAS_WORKSPACE">
-    <div class="workspace-placeholder"><p>[ Bag Merchandise Design Application Workspace ]</p></div>
-  </main>
-  <footer id="SITE_FOOTER"><p>&copy; 2026 Lexi's Treefort. All Rights Reserved.</p></footer>
+<header class="site-header">
+  <a class="logo" href="./"><img src="https://static.wixstatic.com/media/9a6a14_b0a7629f76d040879556d83d4db846db~mv2.jpg" alt="Lexi's Tree Fort"></a>
+  <nav class="nav">
+    <a href="./">Home</a>
+    <a href="https://www.lexistreefort.com/shop-1">Shop</a>
+    <a href="https://www.lexistreefort.com/about">About</a>
+    <a href="https://www.lexistreefort.com/events">Events</a>
+    <a href="https://www.lexistreefort.com/contact">Contact</a>
+  </nav>
+</header>
+
+<section class="hero-art">
+  <img src="https://static.wixstatic.com/media/9a6a14_a3ab275938d54926930057ca4b9612eb~mv2.jpg" alt="Lexi's Tree Fort">
+</section>
+
+<main class="page">
+  <div class="decor blob one"></div><div class="decor blob two"></div>
+  <div class="decor blob three"></div><div class="decor blob four"></div>
+  <div class="decor blob five"></div><div class="decor ring"></div><div class="decor star"></div>
+
+  <div class="content">
+    <section class="intro">
+      <h1>Design Your Custom Bag</h1>
+      <p>Create a bag that feels like it belongs in the colorful, handmade world of Lexi's Tree Fort.</p>
+    </section>
+
+    <section class="design-panel">
+      <div class="panel-title">
+        <h2>Bag Design Studio</h2>
+        <p>Choose a color and style to start your custom design.</p>
+      </div>
+      <div class="builder">
+        <div class="preview" id="preview"><div class="bag" id="bag"></div></div>
+        <div class="controls">
+          <div class="control">
+            <label>Bag color</label>
+            <div class="swatches">
+              <button class="swatch teal" data-color="#39b9bd" aria-label="Teal"></button>
+              <button class="swatch pink" data-color="#ef5d9b" aria-label="Pink"></button>
+              <button class="swatch yellow" data-color="#f6d45a" aria-label="Yellow"></button>
+              <button class="swatch purple" data-color="#7856a6" aria-label="Purple"></button>
+              <button class="swatch orange" data-color="#f28b55" aria-label="Orange"></button>
+            </div>
+          </div>
+          <div class="control">
+            <label for="style">Bag style</label>
+            <select id="style"><option>Handlebar Bag</option><option>Crossbody Bag</option><option>Backpack</option><option>Custom Shape</option></select>
+          </div>
+          <div class="control">
+            <label for="name">Design name</label>
+            <input id="name" type="text" placeholder="My Tree Fort Bag">
+          </div>
+          <div class="control">
+            <label>Next step</label>
+            <p style="margin:0 0 10px;color:#666">This prototype will eventually become the interactive merchandise designer.</p>
+            <a class="cta" href="https://www.lexistreefort.com/contact">Request a Custom Bag</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="gallery">
+      <figure><img src="https://static.wixstatic.com/media/9a6a14_9fbd7236e6364f6ea43d544a0bfeae18~mv2.jpg" alt="Lexi's Tree Fort bag"><figcaption>Handmade bags</figcaption></figure>
+      <figure><img src="https://static.wixstatic.com/media/9a6a14_f3f64b2e1dd843e38027f5919f14c0ba~mv2.jpg" alt="Lexi's Tree Fort products"><figcaption>Colorful custom designs</figcaption></figure>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-shape"></div>
+  <div>© 2026 Lexi's Tree Fort</div>
+  <div class="social"><a href="https://www.instagram.com/">Instagram</a><a href="https://www.facebook.com/">Facebook</a></div>
+</footer>
+
+<script>
+document.querySelectorAll('.swatch').forEach(function(button){
+  button.addEventListener('click',function(){
+    document.getElementById('bag').style.background=this.dataset.color;
+  });
+});
+</script>
 </body>
 </html>
