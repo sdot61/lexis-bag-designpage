@@ -468,100 +468,9 @@ function rebuildShape(record){
   }
 }
 
-const wrapMeshes=new Map();
-
-function clearWraps(){
-  wrapMeshes.forEach((items,side)=>items.forEach(item=>{
-    if(item.mesh)side.remove(item.mesh);
-    if(item.edge)side.remove(item.edge);
-  }));
-  wrapMeshes.clear();
-}
-
-function addWrapRegion(side,record,rawPoints){
-  const clipped=clipAgainstConvexPolygon(rawPoints,side.userData.clipPolygon||rawPoints);
-  if(clipped.length<3)return;
-  const shape=new THREE.Shape();
-  shape.moveTo(clipped[0].x,clipped[0].y);
-  clipped.slice(1).forEach(p=>shape.lineTo(p.x,p.y));
-  shape.closePath();
-  const material=new THREE.MeshBasicMaterial({color:record.color||0xd9f5f5,side:THREE.DoubleSide});
-  if(record.texture){material.map=record.texture;material.color.set(0xffffff);material.needsUpdate=true}
-  const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),material);
-  mesh.position.z=side.userData.designZ??.24;
-  mesh.userData.isWrap=true;
-  mesh.userData.baseSurface=side;
-  side.add(mesh);
-  const pts=clipped.map(p=>new THREE.Vector3(p.x,p.y,mesh.position.z+(mesh.position.z>=0?.009:-.009)));
-  pts.push(pts[0].clone());
-  const edge=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),black());
-  edge.userData.isWrap=true;
-  side.add(edge);
-  if(!wrapMeshes.has(side))wrapMeshes.set(side,[]);
-  wrapMeshes.get(side).push({mesh,edge});
-}
-
-function rebuildWraps(){
-  clearWraps();
-  const front=surfaces.find(s=>s.userData.surface==='front');
-  const back=surfaces.find(s=>s.userData.surface==='back');
-  const side1=surfaces.find(s=>s.userData.surface==='side 1');
-  const side2=surfaces.find(s=>s.userData.surface==='side 2');
-  const full=s=>{
-    const r=polygonRecords.get(s)||[];
-    return r.length===4&&r[r.length-1].end>=.999999;
-  };
-  if(!side1||!side2)return;
-  const sw=side1.userData.width/2;
-  const addFront=(side,record,which)=>{
-    const w=front.userData.width;
-    let bottomX,topX;
-    if(which==='left'){
-      const dBottom=record.rightBoundary.bottom+w/2;
-      const dTop=record.rightBoundary.top+w/2;
-      bottomX=sw-dBottom; topX=sw-dTop;
-    }else{
-      const dBottom=w/2-record.leftBoundary.bottom;
-      const dTop=w/2-record.leftBoundary.top;
-      bottomX=sw-dBottom; topX=sw-dTop;
-    }
-    const h=side.userData.height,bottom=-h/2,top=h/2;
-    addWrapRegion(side,record,[new THREE.Vector2(sw,bottom),new THREE.Vector2(bottomX,bottom),new THREE.Vector2(topX,top),new THREE.Vector2(sw,top)]);
-  };
-  const addBack=(side,record,which)=>{
-    const w=back.userData.width;
-    let bottomX,topX;
-    if(which==='left'){
-      const dBottom=record.rightBoundary.bottom+w/2;
-      const dTop=record.rightBoundary.top+w/2;
-      bottomX=-sw+dBottom; topX=-sw+dTop;
-    }else{
-      const dBottom=w/2-record.leftBoundary.bottom;
-      const dTop=w/2-record.leftBoundary.top;
-      bottomX=-sw+dBottom; topX=-sw+dTop;
-    }
-    const h=side.userData.height,bottom=-h/2,top=h/2;
-    addWrapRegion(side,record,[new THREE.Vector2(-sw,bottom),new THREE.Vector2(bottomX,bottom),new THREE.Vector2(topX,top),new THREE.Vector2(-sw,top)]);
-  };
-  // The leftmost front/back shapes continue around side 1; the rightmost
-  // shapes continue around side 2. The boundary slope is carried through
-  // the 90-degree fold rather than being replaced by a vertical line.
-  if(full(front)){
-    const fr=polygonRecords.get(front);
-    if(!((polygonRecords.get(side1)||[]).length))addFront(side1,fr[0],'left');
-    if(!((polygonRecords.get(side2)||[]).length))addFront(side2,fr[3],'right');
-  }
-  if(full(back)){
-    const br=polygonRecords.get(back);
-    if(!((polygonRecords.get(side1)||[]).length))addBack(side1,br[0],'left');
-    if(!((polygonRecords.get(side2)||[]).length))addBack(side2,br[3],'right');
-  }
-}
-
 function rebuildSurface(surface){
   const records=polygonRecords.get(surface)||[];
   records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
-  rebuildWraps();
 }
 
 function addPolygonToSurface(surface,shapeName){
@@ -806,7 +715,6 @@ deleteShapeButton.addEventListener('click',e=>{
  if(records.length===0){
    polygonRecords.set(surface,[]);
    surfaceOrientations.delete(surface);
-   rebuildWraps();
    polygonOrientation=null;
    selectedTarget=null;
    selectedSurface=surface;
