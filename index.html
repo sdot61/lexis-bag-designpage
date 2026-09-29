@@ -278,8 +278,14 @@ function designMatchesSurface(surface,record){
   return new THREE.Color(record.color||0xd9f5f5).getHexString() ===
     new THREE.Color(surface.material.color).getHexString();
 }
-function boundaryLineMaterial(surface,record,handle=false){
-  const matches=designMatchesSurface(surface,record);
+function designsMatch(a,b){
+  if(!a||!b)return false;
+  if(a.texture||b.texture)return a.texture===b.texture;
+  return new THREE.Color(a.color||0xd9f5f5).getHexString() ===
+    new THREE.Color(b.color||0xd9f5f5).getHexString();
+}
+function boundaryLineMaterial(surface,record,handle=false,neighbor=null){
+  const matches=neighbor ? designsMatch(record,neighbor) : designMatchesSurface(surface,record);
   return new THREE.LineBasicMaterial({
     color:matches?surface.material.color:0x000000,
     transparent:handle,
@@ -611,28 +617,34 @@ function rebuildShape(record){
   record.mesh.position.z=shapeZ;
   surface.add(record.mesh);
 
-  // Every shape retains its black perimeter while it is on the surface.
-  // Only the portions of the original shape perimeter inside the surface are
-  // rendered, so no line can trail beyond the bag.
+  // Render each perimeter segment with the correct boundary rule:
+  // outer edges disappear when the shape matches the surface, while a shared
+  // edge disappears when the two neighboring shapes have the same design.
+  // Non-first shapes do not draw their left edge because that shared boundary
+  // is owned by the preceding shape.
   const edgeZ=shapeZ+.009;
-  const perimeter=record.surface.userData.clipPolygon
-    ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon)
-    : raw;
-  const edgePoints=[];
-  for(let i=0;i<perimeter.length;i+=2){
-    const a=perimeter[i],b=perimeter[i+1];
-    const isFirstShapeLeftEdge=record.index===0 && records.length>=2 &&
-      Math.abs(a.x-record.leftBoundary.bottom)<1e-6 &&
-      Math.abs(b.x-record.leftBoundary.top)<1e-6;
-    if(isFirstShapeLeftEdge)continue;
-    edgePoints.push(new THREE.Vector3(a.x,a.y,edgeZ));
-    edgePoints.push(new THREE.Vector3(b.x,b.y,edgeZ));
+  const edgeSegments=[];
+  for(let i=0;i<raw.length;i++){
+    if(i===3 && record.index>0)continue;
+    const clippedSegment=record.surface.userData.clipPolygon
+      ? clipSegmentToSurfacePerimeter(raw[i],raw[(i+1)%raw.length],record.surface.userData.clipPolygon)
+      : [raw[i],raw[(i+1)%raw.length]];
+    if(clippedSegment.length!==2)continue;
+    const neighbor=(i===1 && record.index<records.length-1)
+      ? records[record.index+1]
+      : null;
+    const material=boundaryLineMaterial(surface,record,false,neighbor);
+    edgeSegments.push(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(clippedSegment[0].x,clippedSegment[0].y,edgeZ),
+        new THREE.Vector3(clippedSegment[1].x,clippedSegment[1].y,edgeZ)
+      ]),
+      material
+    ));
   }
-  record.edge=new THREE.LineSegments(
-    new THREE.BufferGeometry().setFromPoints(edgePoints),
-    boundaryLineMaterial(surface,record)
-  );
+  record.edge=new THREE.Group();
   record.edge.userData.shapeRecord=record;
+  edgeSegments.forEach(segment=>record.edge.add(segment));
   surface.add(record.edge);
 
   // The fourth shape keeps its outer handle unless its design is the
@@ -647,9 +659,10 @@ function rebuildShape(record){
     new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),
     new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)
   ];
+  const rightNeighbor=record.index<records.length-1?records[record.index+1]:null;
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints2),
-    boundaryLineMaterial(surface,record,true)
+    boundaryLineMaterial(surface,record,true,rightNeighbor)
   );
   record.handle.userData.shapeRecord=record;
   record.handle.userData.isShapeHandle=true;
@@ -689,8 +702,10 @@ function rebuildShape(record){
 
 function rebuildSurface(surface){
   const records=polygonRecords.get(surface)||[];
-  records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
+  // Update the surface first so boundary materials compare against the
+  // current preview, not the previous surface color/design.
   surfaceDesignAppearance(surface);
+  records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
 }
 
 function addPolygonToSurface(surface,shapeName){
