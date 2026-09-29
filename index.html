@@ -586,9 +586,9 @@ function rebuildShape(record){
   record.mesh.position.z=shapeZ;
   surface.add(record.mesh);
 
-  // Every shape retains its black perimeter while it is on the surface.
-  // Only the portions of the original shape perimeter inside the surface are
-  // rendered, so no line can trail beyond the bag.
+  // Render only perimeter segments that are not shared with a neighboring
+  // shape of the same design. Shared matching boundaries should disappear
+  // completely rather than leaving a black seam.
   const edgeZ=shapeZ+.009;
   const perimeter=record.surface.userData.clipPolygon
     ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon)
@@ -599,7 +599,12 @@ function rebuildShape(record){
     const isFirstShapeLeftEdge=record.index===0 && records.length>=2 &&
       Math.abs(a.x-record.leftBoundary.bottom)<1e-6 &&
       Math.abs(b.x-record.leftBoundary.top)<1e-6;
-    if(isFirstShapeLeftEdge)continue;
+    const isSharedWithPrevious=record.index>0 &&
+      Math.abs(a.x-record.leftBoundary.bottom)<1e-6 &&
+      Math.abs(b.x-record.leftBoundary.top)<1e-6;
+    const previous=record.index>0?records[record.index-1]:null;
+    const sharedMatches=previous&&designsMatch(record,previous);
+    if(isFirstShapeLeftEdge||isSharedWithPrevious&&sharedMatches)continue;
     edgePoints.push(new THREE.Vector3(a.x,a.y,edgeZ));
     edgePoints.push(new THREE.Vector3(b.x,b.y,edgeZ));
   }
