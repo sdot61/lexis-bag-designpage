@@ -450,12 +450,15 @@ function rebuildShape(record){
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
 
-  // Only the right boundary is a hit target. It is invisible, so the visible
-  // boundary remains the actual shape edge rather than a second adjustment line.
-  const handlePoints=[
-    new THREE.Vector3(record.rightBoundary.bottom,bottom,shapeZ+.015),
-    new THREE.Vector3(record.rightBoundary.top,top,shapeZ+.015)
-  ];
+  // Only the right boundary is a hit target. Keep its rendered portion
+  // inside the surface too; the invisible hit line must not visibly protrude
+  // beyond the bag.
+  const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
+  const handleB=new THREE.Vector2(record.rightBoundary.top,top);
+  const clippedHandle=record.surface.userData.clipPolygon
+    ? clipSegmentAgainstConvexPolygon(handleA,handleB,record.surface.userData.clipPolygon)
+    : [handleA,handleB];
+  const handlePoints=clippedHandle.map(p=>new THREE.Vector3(p.x,p.y,shapeZ+.015));
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints),
     new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
