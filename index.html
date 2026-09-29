@@ -253,6 +253,22 @@ ray.params.Line.threshold=.035;
 const polygonCounts=new Map();
 const polygonRecords=new Map();
 
+function designKey(record){
+  return record.texture
+    ? 'texture:'+Object.keys(leopardTextures).find(k=>leopardTextures[k]===record.texture)
+    : 'color:'+new THREE.Color(record.color||0xd9f5f5).getHexString();
+}
+function majorityShapeRecord(surface){
+  const records=polygonRecords.get(surface)||[];
+  const counts=new Map();
+  records.forEach(r=>counts.set(designKey(r),(counts.get(designKey(r))||0)+1));
+  let best=null,bestCount=1;
+  records.forEach(r=>{
+    const count=counts.get(designKey(r))||0;
+    if(count>bestCount){best=r;bestCount=count}
+  });
+  return best;
+}
 function surfaceDesignAppearance(surface){
   const records=polygonRecords.get(surface)||[];
   const manual=surface.userData.manualDesign;
@@ -265,49 +281,34 @@ function surfaceDesignAppearance(surface){
       surface.material.map=null;
       surface.material.color.set(0xffffff);
     }
+    surface.userData.designColor=surface.material.color.clone();
     surface.material.needsUpdate=true;
     return;
   }
 
-  // With exactly two shapes, the first shape establishes the background
-  // appearance. This lets the first shape visually blend into the face while
-  // the second shape is the newly introduced contrasting design.
+  // The second shape makes the first shape the automatic surface background.
   if(records.length===2){
     const first=records[0];
-    if(!manual){
-      surface.material.map=first.texture||null;
-      surface.material.color.set(first.texture?0xffffff:(first.color||0xd9f5f5));
-      surface.material.needsUpdate=true;
-    }
+    surface.userData.manualDesign=null;
+    surface.material.map=first.texture||null;
+    surface.material.color.set(first.texture?0xffffff:(first.color||0xd9f5f5));
+    surface.userData.designColor=surface.material.color.clone();
+    surface.material.needsUpdate=true;
     return;
   }
 
-  // With three or four shapes, a design only takes over the face when at least
-  // two shapes share it. This is the actual majority/overriding condition.
-  const counts=new Map();
-  const keyFor=r=>r.texture
-    ? 'texture:'+Object.keys(leopardTextures).find(k=>leopardTextures[k]===r.texture)
-    : 'color:'+new THREE.Color(r.color||0xd9f5f5).getHexString();
-  records.forEach(r=>counts.set(keyFor(r),(counts.get(keyFor(r))||0)+1));
-
-  let best=null,bestCount=1;
-  records.forEach(r=>{
-    const count=counts.get(keyFor(r))||0;
-    if(count>bestCount){
-      best=r;
-      bestCount=count;
-    }
-  });
-
+  const best=majorityShapeRecord(surface);
   if(best){
     surface.userData.manualDesign=null;
     surface.material.map=best.texture||null;
     surface.material.color.set(best.texture?0xffffff:(best.color||0xd9f5f5));
-    surface.material.needsUpdate=true;
-  }else if(!manual){
-    // If there is no majority, preserve the existing surface appearance.
-    surface.material.needsUpdate=true;
+  }else if(manual){
+    surface.material.map=manual.texture||null;
+    surface.material.color.set(manual.texture?0xffffff:(manual.color||0xffffff));
   }
+  // With no majority, leave the existing surface appearance unchanged.
+  surface.userData.designColor=surface.material.color.clone();
+  surface.material.needsUpdate=true;
 }
 const surfaceTool=document.getElementById('surfaceTool');
 const polygonPicker=document.getElementById('polygonPicker');
@@ -609,10 +610,12 @@ function rebuildShape(record){
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
 
-  // The right edge is the working adjustment handle for every shape.
-  // Once four shapes exist, the final shape's far edge is part of the finished
-  // surface preview and no longer gets a black adjustment line.
-  if(records.length<4 || record.index<records.length-1){
+  // The fourth shape keeps its outer handle unless its design is the
+  // current majority, in which case that edge becomes part of the preview.
+  const majority=majorityShapeRecord(surface);
+  const hideFinalOuterHandle=records.length===4 &&
+    record.index===records.length-1 && majority===record;
+  if(!hideFinalOuterHandle){
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
   const handlePoints2=[
@@ -712,6 +715,9 @@ function addPolygonToSurface(surface,shapeName){
   records.push(record);
   polygonRecords.set(surface,records);
 
+  // From the second shape onward, the first shape supplies the automatic
+  // surface background unless a later majority takes over.
+  if(records.length===2)surface.userData.manualDesign=null;
   rebuildSurface(surface);
   selectedTarget=record.mesh;
   selectedSurface=surface;
@@ -764,16 +770,10 @@ function updateDraggedShape(e){
     const minRightX=record.leftBoundary.bottom+w*.008;
     const farSide=w/2;
 
-    // Do not reserve a one-fifth allocation for each shape. Boundaries can
-    // pass through neighboring shapes, allowing encroachment while preserving
-    // the parallelogram's slant. Only inversion and the far surface edge are
-    // prevented.
-    let newRight=p.x;
-    if(record.orientation==='left'){
-      newRight=Math.min(minRightX,Math.max(farSide,newRight));
-    }else{
-      newRight=Math.max(minRightX,Math.min(farSide,newRight));
-    }
+    // Do not reserve a one-fifth allocation for each shape. The bottom
+    // endpoint controls horizontal position; the top endpoint follows by the
+    // same delta, preserving the selected parallelogram angle.
+    const newRight=Math.max(minRightX,Math.min(farSide,p.x));
 
     const delta=newRight-currentRight;
     record.rightBoundary.bottom+=delta;
