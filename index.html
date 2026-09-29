@@ -424,6 +424,7 @@ function clippedOriginalPerimeter(raw,clipPoints){
 }
 function rebuildShape(record){
   const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
+  const records=polygonRecords.get(surface)||[];
   const bottom=-h/2,top=h/2;
 
   // Every shape owns its right boundary. The next shape reuses that exact
@@ -470,6 +471,7 @@ function rebuildShape(record){
 
   if(record.mesh)surface.remove(record.mesh);
   if(record.handle)surface.remove(record.handle);
+  if(record.leftHandle)surface.remove(record.leftHandle);
   if(record.edge)surface.remove(record.edge);
 
   const shapeGeometry=new THREE.ShapeGeometry(shape);
@@ -550,8 +552,35 @@ function rebuildShape(record){
   record.handle.userData.isShapeHandle=true;
   record.handle.userData.isBoundaryHandle=true;
   record.handle.userData.isWorkingHandle=true;
+  record.handle.userData.handleSide='right';
   record.handle.renderOrder=20;
   surface.add(record.handle);
+
+  // Only the first shape gets a second working handle: its left perimeter.
+  // Moving it changes the shape's left edge while leaving the right edge
+  // fixed, allowing the user to narrow/widen the first shape from either side
+  // and intentionally expose some of the underlying surface on the left.
+  if(record.index===0){
+    const leftA=new THREE.Vector2(record.leftBoundary.bottom,bottom);
+    const leftB=new THREE.Vector2(record.leftBoundary.top,top);
+    const leftVisible=record.surface.userData.clipPolygon
+      ? clipSegmentToSurfacePerimeter(leftA,leftB,record.surface.userData.clipPolygon)
+      : [leftA,leftB];
+    const leftPoints=leftVisible.length===2
+      ? leftVisible.map(p=>new THREE.Vector3(p.x,p.y,shapeZ+.015))
+      : [new THREE.Vector3(leftA.x,leftA.y,shapeZ+.015),new THREE.Vector3(leftB.x,leftB.y,shapeZ+.015)];
+    record.leftHandle=new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(leftPoints),
+      new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
+    );
+    record.leftHandle.userData.shapeRecord=record;
+    record.leftHandle.userData.isShapeHandle=true;
+    record.leftHandle.userData.isBoundaryHandle=true;
+    record.leftHandle.userData.isWorkingHandle=true;
+    record.leftHandle.userData.handleSide='left';
+    record.leftHandle.renderOrder=20;
+    surface.add(record.leftHandle);
+  }
 }
 
 function rebuildSurface(surface){
@@ -626,23 +655,35 @@ function updateDraggedShape(e){
   const record=draggingHandle.record;
   const i=record.index;
   const minUnit=1/5;
-  const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
-  const minRight=record.start+minUnit;
-  // Adjacent shapes may encroach on one another. A shape only has to retain
-  // its own minimum width; its neighbor's boundary can move into its space.
-  const maxRight=i<records.length-1?records[i+1].end:1.35;
-  const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
-  const delta=(newEnd-record.end)*surface.userData.width;
 
-  // Translate only the right boundary. If another shape exists, its left
-  // boundary is the same object, so it moves with it automatically.
-  record.rightBoundary.bottom+=delta;
-  record.rightBoundary.top+=delta;
-  record.end=newEnd;
+  if(draggingHandle.side==='left'){
+    // The left handle exists only on shape 1. Keep its right boundary fixed
+    // and enforce the same one-fifth minimum width.
+    const rightX=Math.min(record.rightBoundary.bottom,record.rightBoundary.top);
+    const proposedX=p.x;
+    const minLeft=rightX-minUnit*surface.userData.width;
+    const newLeft=Math.min(proposedX,rightX-minUnit*surface.userData.width);
+    const delta=newLeft-record.leftBoundary.bottom;
+    record.leftBoundary.bottom+=delta;
+    record.leftBoundary.top+=delta;
+    record.start=(newLeft+surface.userData.width/2)/surface.userData.width;
+  }else{
+    const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
+    const minRight=record.start+minUnit;
+    // The right handle retains the existing behavior: a shape can encroach
+    // into the following shape's allocation, but cannot become narrower than
+    // one-fifth of the surface.
+    const maxRight=i<records.length-1?records[i+1].end:1.35;
+    const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
+    const delta=(newEnd-record.end)*surface.userData.width;
+    record.rightBoundary.bottom+=delta;
+    record.rightBoundary.top+=delta;
+    record.end=newEnd;
 
-  for(let j=i+1;j<records.length;j++){
-    records[j].start=records[j-1].end;
-    records[j].leftBoundary=records[j-1].rightBoundary;
+    for(let j=i+1;j<records.length;j++){
+      records[j].start=records[j-1].end;
+      records[j].leftBoundary=records[j-1].rightBoundary;
+    }
   }
 
   rebuildSurface(surface);
@@ -669,7 +710,7 @@ canvas.addEventListener('pointermove',e=>{
  const hoverHit=ray.intersectObjects(hoverObjects,false).sort((a,b)=>a.distance-b.distance)[0]?.object||null;
  if(hoverHit!==hovered){hover(hovered,false);hovered=hoverHit;if(hovered)hover(hovered,true)}
  const handleHit=ray.intersectObjects(
-   [...polygonRecords.values()].flat().map(r=>r.handle).filter(h=>h?.userData?.isWorkingHandle),
+   [...polygonRecords.values()].flatMap(records=>records.flatMap(r=>[r.handle,r.leftHandle])).filter(h=>h?.userData?.isWorkingHandle),
    false
  ).sort((a,b)=>a.distance-b.distance)[0]?.object;
  canvas.classList.toggle('shape-cursor',!!handleHit);
@@ -679,14 +720,17 @@ canvas.addEventListener('pointerdown',e=>{
  pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-(((e.clientY-r.top)/r.height)*2-1);
  ray.setFromCamera(pointer,camera);
  const handles=[];
- polygonRecords.forEach(records=>records.forEach(record=>{if(record.handle)handles.push(record.handle)}));
+ polygonRecords.forEach(records=>records.forEach(record=>{
+   if(record.handle)handles.push(record.handle);
+   if(record.leftHandle)handles.push(record.leftHandle);
+ }));
  const h=ray.intersectObjects(handles.filter(x=>x.userData?.isWorkingHandle),false)
    .sort((a,b)=>a.distance-b.distance)[0]?.object;
  if(h?.userData?.isShapeHandle){
    const record=h.userData.shapeRecord;
    targetSpeed=0; targetPitch=0;
    controls.enabled=false;
-   draggingHandle={record,surface:record.surface};
+   draggingHandle={record,surface:record.surface,side:h.userData.handleSide||'right'};
    selectedSurface=record.surface;selectedTarget=record.mesh;
    canvas.setPointerCapture(e.pointerId);
    targetSpeed=0;targetPitch=0;
@@ -794,6 +838,7 @@ deleteShapeButton.addEventListener('click',e=>{
  records.forEach(r=>{
    if(r.mesh)surface.remove(r.mesh);
    if(r.handle)surface.remove(r.handle);
+   if(r.leftHandle)surface.remove(r.leftHandle);
    if(r.edge)surface.remove(r.edge);
  });
  records.splice(idx,1);
