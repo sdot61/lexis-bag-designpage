@@ -617,8 +617,13 @@ function rebuildShape(record){
         Math.abs(a.x-record.leftBoundary.bottom)<1e-6 &&
         Math.abs(b.x-record.leftBoundary.top)<1e-6;
       const previous=record.index>0?records[record.index-1]:null;
+      const nextRecord=record.index<records.length-1?records[record.index+1]:null;
       const sharedMatches=previous&&designsMatch(record,previous);
-      if(isFirstShapeLeftEdge||isSharedWithPrevious&&sharedMatches)continue;
+      const nextMatches=nextRecord&&designsMatch(record,nextRecord);
+      const isRightBoundary=
+        Math.abs(a.x-record.rightBoundary.bottom)<1e-6 &&
+        Math.abs(b.x-record.rightBoundary.top)<1e-6;
+      if(isFirstShapeLeftEdge||isSharedWithPrevious&&sharedMatches||isRightBoundary&&nextMatches)continue;
       edgePoints.push(new THREE.Vector3(a.x,a.y,edgeZ));
       edgePoints.push(new THREE.Vector3(b.x,b.y,edgeZ));
     }
