@@ -372,9 +372,45 @@ function clipSegmentAgainstConvexPolygon(a,b,clipPoints){
   }
   return [a.clone().addScaledVector(d,t0),b.clone().addScaledVector(d,t1)];
 }
+function clipSegmentToSurfacePerimeter(a,b,clipPoints){
+  if(!clipPoints?.length)return [a.clone(),b.clone()];
+  const d=b.clone().sub(a);
+  const hits=[];
+  for(let i=0;i<clipPoints.length;i++){
+    const c=clipPoints[i],n=clipPoints[(i+1)%clipPoints.length];
+    const e=n.clone().sub(c);
+    const cross=e.x*d.y-e.y*d.x;
+    const rel=a.clone().sub(c);
+    const crossRel=e.x*rel.y-e.y*rel.x;
+    if(Math.abs(cross)<1e-10)continue;
+    const t=(e.x*rel.y-e.y*rel.x)/cross;
+    const u=(rel.x*d.y-rel.y*d.x)/cross;
+    if(t>=-1e-9&&t<=1+1e-9&&u>=-1e-9&&u<=1+1e-9)hits.push(Math.max(0,Math.min(1,t)));
+  }
+  const candidates=[0,1,...hits].sort((x,y)=>x-y);
+  let best=null;
+  for(let i=0;i<candidates.length-1;i++){
+    const t0=candidates[i],t1=candidates[i+1],tm=(t0+t1)/2;
+    const p=a.clone().addScaledVector(d,tm);
+    let inside=true;
+    for(let j=0;j<clipPoints.length;j++){
+      const A=clipPoints[j],B=clipPoints[(j+1)%clipPoints.length];
+      if(((B.x-A.x)*(p.y-A.y)-(B.y-A.y)*(p.x-A.x)) < -1e-7){inside=false;break}
+    }
+    if(inside){best=[t0,t1];break}
+  }
+  if(!best)return [];
+  return [
+    a.clone().addScaledVector(d,best[0]),
+    a.clone().addScaledVector(d,best[1])
+  ];
+}
 function clippedOriginalPerimeter(raw,clipPoints){
   const segments=[];
-  for(let i=0;i<raw.length;i++){const seg=clipSegmentAgainstConvexPolygon(raw[i],raw[(i+1)%raw.length],clipPoints);if(seg.length===2)segments.push(seg[0],seg[1])}
+  for(let i=0;i<raw.length;i++){
+    const seg=clipSegmentToSurfacePerimeter(raw[i],raw[(i+1)%raw.length],clipPoints);
+    if(seg.length===2)segments.push(seg[0],seg[1]);
+  }
   return segments;
 }
 function rebuildShape(record){
@@ -427,7 +463,20 @@ function rebuildShape(record){
   if(record.handle)surface.remove(record.handle);
   if(record.edge)surface.remove(record.edge);
 
-  record.mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),
+  const shapeGeometry=new THREE.ShapeGeometry(shape);
+  if(record.texture){
+    const pos=shapeGeometry.getAttribute('position');
+    const uv=shapeGeometry.getAttribute('uv');
+    const xs=[],ys=[];
+    for(let i=0;i<pos.count;i++){xs.push(pos.getX(i));ys.push(pos.getY(i));}
+    const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+    const spanX=Math.max(1e-6,maxX-minX),spanY=Math.max(1e-6,maxY-minY);
+    for(let i=0;i<pos.count;i++){
+      uv.setXY(i,(pos.getX(i)-minX)/spanX,(pos.getY(i)-minY)/spanY);
+    }
+    uv.needsUpdate=true;
+  }
+  record.mesh=new THREE.Mesh(shapeGeometry,
     new THREE.MeshBasicMaterial({color:record.color||0xd9f5f5,side:THREE.DoubleSide}));
   record.mesh.userData.baseSurface=surface;
   record.mesh.userData.shapeRecord=record;
@@ -444,19 +493,28 @@ function rebuildShape(record){
   // Draw only original perimeter segments that remain on the surface.
   // The clipping boundary itself is not drawn, so no artificial line appears where the shape passes behind the bag edge.
   const edgeZ=shapeZ+.009;
-  const perimeter=record.surface.userData.clipPolygon ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon) : raw;
-  const edgePoints=perimeter.map(p=>new THREE.Vector3(p.x,p.y,edgeZ));
-  record.edge=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(edgePoints),new THREE.LineBasicMaterial({color:0x000000}));
+  const perimeter=record.surface.userData.clipPolygon
+    ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon)
+    : raw;
+  const edgePoints=[];
+  for(let i=0;i<perimeter.length;i+=2){
+    edgePoints.push(new THREE.Vector3(perimeter[i].x,perimeter[i].y,edgeZ));
+    edgePoints.push(new THREE.Vector3(perimeter[i+1].x,perimeter[i+1].y,edgeZ));
+  }
+  record.edge=new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints(edgePoints),
+    new THREE.LineBasicMaterial({color:0x000000})
+  );
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
 
-  // Only the right boundary is a hit target. Keep its rendered portion
-  // inside the surface too; the invisible hit line must not visibly protrude
-  // beyond the bag.
+  // The final shape keeps a retractable adjustment line only on the side
+  // that remains inside the surface. Earlier shapes use their shared boundary
+  // solely as the boundary between adjacent shapes.
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
   const clippedHandle=record.surface.userData.clipPolygon
-    ? clipSegmentAgainstConvexPolygon(handleA,handleB,record.surface.userData.clipPolygon)
+    ? clipSegmentToSurfacePerimeter(handleA,handleB,record.surface.userData.clipPolygon)
     : [handleA,handleB];
   const handlePoints=clippedHandle.map(p=>new THREE.Vector3(p.x,p.y,shapeZ+.015));
   record.handle=new THREE.Line(
