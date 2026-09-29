@@ -255,7 +255,11 @@ const polygonRecords=new Map();
 
 function surfaceDesignAppearance(surface){
   const records=polygonRecords.get(surface)||[];
-  if(!records.length){
+  // The first shape remains the only visible design, with the underlying
+  // surface intentionally left blank. Once a second shape exists, the
+  // unoccupied face previews the majority design, with the newest design
+  // breaking ties.
+  if(records.length<=1){
     surface.material.map=null;
     surface.material.color.set(0xffffff);
     surface.material.needsUpdate=true;
@@ -732,7 +736,7 @@ function updateDraggedShape(e){
     const w=surface.userData.width;
     const currentRight=record.rightBoundary.bottom;
     const minRightX=record.leftBoundary.bottom+minUnit*w;
-    const farSide=record.orientation==='left' ? -w/2 : w/2;
+    const farSide=w/2;
 
     // The actual boundary coordinates, rather than the old allocation values,
     // control dragging. This keeps every parallelogram fluidly adjustable and
