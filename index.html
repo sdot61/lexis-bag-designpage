@@ -278,10 +278,10 @@ function surfaceDesignAppearance(surface){
     ? 'texture:'+Object.keys(leopardTextures).find(k=>leopardTextures[k]===r.texture)
     : 'color:'+new THREE.Color(r.color||0xd9f5f5).getHexString();
   records.forEach(r=>counts.set(keyFor(r),(counts.get(keyFor(r))||0)+1));
-  let best=records[records.length-1],bestCount=-1;
+  let best=records[0],bestCount=-1;
   records.forEach(r=>{
     const count=counts.get(keyFor(r))||0;
-    if(count>bestCount || (count===bestCount && r===records[records.length-1])){
+    if(count>bestCount){
       best=r;bestCount=count;
     }
   });
