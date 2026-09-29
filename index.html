@@ -215,15 +215,16 @@ bridgeEdges.position.copy(bridge.position); bridgeEdges.rotation.copy(bridge.rot
 group.add(bridge,bridgeEdges);
 surfaces.push(bridge);
 
-// Keep the accessory bridge visually in front of the shape lines on the
-// back panel and top flap. Shape handles remain interactive underneath it.
-bridge.renderOrder=1000;
-bridge.material.depthTest=false;
-bridge.material.depthWrite=false;
-bridge.material.transparent=true;
-bridge.material.opacity=1;
-bridgeEdges.renderOrder=1001;
-bridgeEdges.material.depthTest=false;
+// Let normal depth buffering decide whether the bridge is in front of or
+// behind another surface. This makes the bridge obscure shape outlines when
+// it foregrounds them, while allowing a foreground face to obscure the bridge
+// when the camera sees that face first.
+bridge.renderOrder=0;
+bridge.material.depthTest=true;
+bridge.material.depthWrite=true;
+bridge.material.transparent=false;
+bridgeEdges.renderOrder=1;
+bridgeEdges.material.depthTest=true;
 bridgeEdges.material.depthWrite=false;
 
 // Curved opening contour.
@@ -530,7 +531,7 @@ function rebuildShape(record){
   }
   record.edge=new THREE.LineSegments(
     new THREE.BufferGeometry().setFromPoints(edgePoints),
-    new THREE.LineBasicMaterial({color:0x000000})
+    new THREE.LineBasicMaterial({color:0x000000,depthTest:true,depthWrite:false})
   );
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
@@ -547,7 +548,7 @@ function rebuildShape(record){
   ];
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints2),
-    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
+    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:true,depthWrite:false})
   );
   record.handle.userData.shapeRecord=record;
   record.handle.userData.isShapeHandle=true;
@@ -572,7 +573,7 @@ function rebuildShape(record){
       : [new THREE.Vector3(leftA.x,leftA.y,shapeZ+.015),new THREE.Vector3(leftB.x,leftB.y,shapeZ+.015)];
     record.leftHandle=new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(leftPoints),
-      new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
+      new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:true,depthWrite:false})
     );
     record.leftHandle.userData.shapeRecord=record;
     record.leftHandle.userData.isShapeHandle=true;
@@ -601,12 +602,24 @@ function addPolygonToSurface(surface,shapeName){
 
   let leftBoundary;
   if(records.length){
-    leftBoundary=records[records.length-1].rightBoundary;
+    const previous=records[records.length-1];
+    const previousRight=previous.rightBoundary;
+    // If the previous shape has been pulled completely beyond an edge,
+    // placing the new shape directly on that off-surface boundary would make
+    // the new shape invisible too. Snap the new shape's left edge back onto
+    // the visible surface edge, while leaving the previous shape's own right
+    // boundary untouched so it can still be retracted later.
+    const previousRightX=Math.max(previousRight.bottom,previousRight.top);
+    const previousLeftX=Math.min(previousRight.bottom,previousRight.top);
+    if(previousRightX < -w/2){
+      leftBoundary={bottom:-w/2,top:-w/2};
+    }else if(previousLeftX > w/2){
+      leftBoundary={bottom:w/2,top:w/2};
+    }else{
+      leftBoundary=previousRight;
+    }
   }else{
     // The first allocation is exactly the first 1/5 of the surface width.
-    // Its left edge is the surface edge itself, rather than a slanted edge
-    // that straddles the surface. This guarantees that the first shape owns
-    // the entire leftmost unit of surface.
     leftBoundary={bottom:-w/2,top:-w/2};
   }
 
