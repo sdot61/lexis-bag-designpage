@@ -59,10 +59,10 @@ footer{text-align:center;padding:30px 20px 40px;font-size:.85rem;color:#666}.soc
   <div class="polygon-picker" id="polygonPicker">
     <button class="polygon-picker-toggle" id="polygonPickerToggle">Choose Shape <span>▾</span></button>
     <div class="polygon-menu" id="polygonMenu">
-      <button class="polygon-choice" data-shape="slight"><svg viewBox="0 0 52 28"><polygon points="7,24 34,24 45,4 18,4"/></svg><span>1</span></button>
-      <button class="polygon-choice" data-shape="medium"><svg viewBox="0 0 52 28"><polygon points="7,24 36,24 45,4 16,4"/></svg><span>2</span></button>
-      <button class="polygon-choice" data-shape="strong"><svg viewBox="0 0 52 28"><polygon points="7,24 39,24 45,4 13,4"/></svg><span>3</span></button>
-      <button class="polygon-choice" data-shape="wide"><svg viewBox="0 0 52 28"><polygon points="5,24 42,24 47,4 10,4"/></svg><span>4</span></button>
+      <button class="polygon-choice" data-shape="slight"><svg viewBox="0 0 52 28"><polygon data-right="7,24 34,24 45,4 18,4" data-left="18,24 45,24 34,4 7,4" points="7,24 34,24 45,4 18,4"/></svg><span>1</span></button>
+      <button class="polygon-choice" data-shape="medium"><svg viewBox="0 0 52 28"><polygon data-right="7,24 36,24 45,4 16,4" data-left="16,24 45,24 36,4 7,4" points="7,24 36,24 45,4 16,4"/></svg><span>2</span></button>
+      <button class="polygon-choice" data-shape="strong"><svg viewBox="0 0 52 28"><polygon data-right="7,24 39,24 45,4 13,4" data-left="13,24 45,24 39,4 7,4" points="7,24 39,24 45,4 13,4"/></svg><span>3</span></button>
+      <button class="polygon-choice" data-shape="wide"><svg viewBox="0 0 52 28"><polygon data-right="5,24 42,24 47,4 10,4" data-left="10,24 47,24 42,4 5,4" points="5,24 42,24 47,4 10,4"/></svg><span>4</span></button>
     </div>
   </div>
   <button class="shape-delete" id="deleteShape"><span class="delete-x">×</span> Delete Shape</button>
@@ -341,37 +341,42 @@ function clipPolygon(points,axis,value,keepGreater){
 
 function clipAgainstConvexPolygon(points,clipPoints){
   if(!clipPoints?.length)return points;
-  let subject=points.map(p=>p.clone());
-  let area=0;
-  for(let i=0;i<clipPoints.length;i++){
-    const a=clipPoints[i],b=clipPoints[(i+1)%clipPoints.length];
-    area+=a.x*b.y-b.x*a.y;
-  }
+  let subject=points.map(p=>p.clone()),area=0;
+  for(let i=0;i<clipPoints.length;i++){const A=clipPoints[i],B=clipPoints[(i+1)%clipPoints.length];area+=A.x*B.y-B.x*A.y}
   const winding=area>=0?1:-1;
   for(let i=0;i<clipPoints.length;i++){
     if(subject.length<3)break;
-    const A=clipPoints[i],B=clipPoints[(i+1)%clipPoints.length];
-    const next=[];
+    const A=clipPoints[i],B=clipPoints[(i+1)%clipPoints.length],next=[];
     for(let j=0;j<subject.length;j++){
       const P=subject[j],Q=subject[(j+1)%subject.length];
-      const crossP=(B.x-A.x)*(P.y-A.y)-(B.y-A.y)*(P.x-A.x);
-      const crossQ=(B.x-A.x)*(Q.y-A.y)-(B.y-A.y)*(Q.x-A.x);
-      const pIn=crossP*winding>=-1e-9;
-      const qIn=crossQ*winding>=-1e-9;
-      if(pIn!==qIn){
-        const denom=crossP-crossQ;
-        if(Math.abs(denom)>1e-12){
-          const t=crossP/denom;
-          next.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
-        }
-      }
+      const cP=((B.x-A.x)*(P.y-A.y)-(B.y-A.y)*(P.x-A.x))*winding;
+      const cQ=((B.x-A.x)*(Q.y-A.y)-(B.y-A.y)*(Q.x-A.x))*winding;
+      const pIn=cP>=-1e-9,qIn=cQ>=-1e-9;
+      if(pIn!==qIn){const den=cP-cQ;if(Math.abs(den)>1e-12){const t=cP/den;next.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t))}}
       if(qIn)next.push(Q.clone());
     }
     subject=next;
   }
   return subject;
 }
-
+function clipSegmentAgainstConvexPolygon(a,b,clipPoints){
+  if(!clipPoints?.length)return [a.clone(),b.clone()];
+  const d=b.clone().sub(a);let area=0;
+  for(let i=0;i<clipPoints.length;i++){const A=clipPoints[i],B=clipPoints[(i+1)%clipPoints.length];area+=A.x*B.y-B.x*A.y}
+  const winding=area>=0?1:-1;let t0=0,t1=1;
+  for(let i=0;i<clipPoints.length;i++){
+    const A=clipPoints[i],B=clipPoints[(i+1)%clipPoints.length],ex=B.x-A.x,ey=B.y-A.y;
+    const c0=(ex*(a.y-A.y)-ey*(a.x-A.x))*winding,cd=(ex*d.y-ey*d.x)*winding;
+    if(Math.abs(cd)<1e-12){if(c0<-1e-9)return [];continue}
+    const t=-c0/cd;if(cd>0)t0=Math.max(t0,t);else t1=Math.min(t1,t);if(t0>t1+1e-9)return [];
+  }
+  return [a.clone().addScaledVector(d,t0),b.clone().addScaledVector(d,t1)];
+}
+function clippedOriginalPerimeter(raw,clipPoints){
+  const segments=[];
+  for(let i=0;i<raw.length;i++){const seg=clipSegmentAgainstConvexPolygon(raw[i],raw[(i+1)%raw.length],clipPoints);if(seg.length===2)segments.push(seg[0],seg[1])}
+  return segments;
+}
 function rebuildShape(record){
   const surface=record.surface,w=surface.userData.width,h=surface.userData.height;
   const bottom=-h/2,top=h/2;
@@ -436,16 +441,12 @@ function rebuildShape(record){
   record.mesh.position.z=shapeZ;
   surface.add(record.mesh);
 
-  // Draw only the portion of the shape boundary that lies on the
-  // surface. Any part of the original shape extending beyond the surface
-  // must disappear rather than leaving a floating outline outside the bag.
+  // Draw only original perimeter segments that remain on the surface.
+  // The clipping boundary itself is not drawn, so no artificial line appears where the shape passes behind the bag edge.
   const edgeZ=shapeZ+.009;
-  const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,edgeZ));
-  edgePoints.push(edgePoints[0].clone());
-  record.edge=new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints(edgePoints),
-    new THREE.LineBasicMaterial({color:0x000000})
-  );
+  const perimeter=record.surface.userData.clipPolygon ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon) : raw;
+  const edgePoints=perimeter.map(p=>new THREE.Vector3(p.x,p.y,edgeZ));
+  record.edge=new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(edgePoints),new THREE.LineBasicMaterial({color:0x000000}));
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
 
@@ -662,6 +663,10 @@ document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
    selectedTarget=record.mesh;
  }
 }));
+function updateShapeChoiceDirection(orientation){
+  document.querySelectorAll('.polygon-choice polygon').forEach(poly=>poly.setAttribute('points',poly.dataset[orientation]||poly.dataset.right));
+}
+updateShapeChoiceDirection('right');
 document.querySelectorAll('.orientation-option').forEach(b=>b.addEventListener('click',e=>{
  e.stopPropagation();
  if(!selectedSurface||selectedSurface.userData.noPolygons)return;
@@ -669,6 +674,7 @@ document.querySelectorAll('.orientation-option').forEach(b=>b.addEventListener('
  if(orientation!=='left'&&orientation!=='right')return;
  surfaceOrientations.set(selectedSurface,orientation);
  polygonOrientation=orientation;
+ updateShapeChoiceDirection(orientation);
  b.classList.add('active');
  selectedTarget=selectedSurface;
  updatePolygonStatus();
