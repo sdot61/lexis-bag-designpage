@@ -269,6 +269,25 @@ function majorityShapeRecord(surface){
   });
   return best;
 }
+function designMatchesSurface(surface,record){
+  if(!record)return false;
+  const surfaceTexture=surface.material.map;
+  if(record.texture||surfaceTexture){
+    return record.texture===surfaceTexture;
+  }
+  return new THREE.Color(record.color||0xd9f5f5).getHexString() ===
+    new THREE.Color(surface.material.color).getHexString();
+}
+function boundaryLineMaterial(surface,record,handle=false){
+  const matches=designMatchesSurface(surface,record);
+  return new THREE.LineBasicMaterial({
+    color:matches?surface.material.color:0x000000,
+    transparent:handle,
+    opacity:handle?.9:1,
+    depthTest:true,
+    depthWrite:false
+  });
+}
 function surfaceDesignAppearance(surface){
   const records=polygonRecords.get(surface)||[];
   const manual=surface.userData.manualDesign;
@@ -316,7 +335,17 @@ function baseSurface(obj){return obj?.userData.baseSurface||obj||null}
 function designColor(obj){return obj?.userData.designColor||0xffffff}
 function hover(obj,on){
  if(!obj?.material)return;
- obj.material.color.set(on?0xd9f5f5:designColor(obj));
+ if(on){
+   obj.material.color.set(0xd9f5f5);
+   return;
+ }
+ const record=obj.userData?.shapeRecord;
+ if(record){
+   const surface=record.surface;
+   obj.material.color.set(designMatchesSurface(surface,record)?surface.material.color:0x000000);
+ }else{
+   obj.material.color.set(designColor(obj));
+ }
 }
 function applyDesign(obj,button){
  if(!obj)return;
@@ -601,7 +630,7 @@ function rebuildShape(record){
   }
   record.edge=new THREE.LineSegments(
     new THREE.BufferGeometry().setFromPoints(edgePoints),
-    new THREE.LineBasicMaterial({color:0x000000,depthTest:true,depthWrite:false})
+    boundaryLineMaterial(surface,record)
   );
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
@@ -620,7 +649,7 @@ function rebuildShape(record){
   ];
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints2),
-    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:true,depthWrite:false})
+    boundaryLineMaterial(surface,record,true)
   );
   record.handle.userData.shapeRecord=record;
   record.handle.userData.isShapeHandle=true;
@@ -646,7 +675,7 @@ function rebuildShape(record){
       : [new THREE.Vector3(leftA.x,leftA.y,shapeZ+.015),new THREE.Vector3(leftB.x,leftB.y,shapeZ+.015)];
     record.leftHandle=new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(leftPoints),
-      new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:true,depthWrite:false})
+      boundaryLineMaterial(surface,record,true)
     );
     record.leftHandle.userData.shapeRecord=record;
     record.leftHandle.userData.isShapeHandle=true;
