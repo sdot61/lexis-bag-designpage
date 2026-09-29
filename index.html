@@ -298,15 +298,11 @@ function surfaceDesignAppearance(surface){
   }
 
   const best=majorityShapeRecord(surface);
-  if(best){
-    surface.userData.manualDesign=null;
-    surface.material.map=best.texture||null;
-    surface.material.color.set(best.texture?0xffffff:(best.color||0xd9f5f5));
-  }else if(manual){
-    surface.material.map=manual.texture||null;
-    surface.material.color.set(manual.texture?0xffffff:(manual.color||0xffffff));
-  }
-  // With no majority, leave the existing surface appearance unchanged.
+  const preview=best||records[0];
+  surface.userData.manualDesign=null;
+  surface.material.map=preview.texture||null;
+  surface.material.color.set(preview.texture?0xffffff:(preview.color||0xd9f5f5));
+  // With no majority, the surface returns to the first shape's design.
   surface.userData.designColor=surface.material.color.clone();
   surface.material.needsUpdate=true;
 }
