@@ -114,7 +114,13 @@ const leopardTextures={};
 function makeLeopardTexture(base){
  const cv=document.createElement('canvas');cv.width=256;cv.height=256;
  const ctx=cv.getContext('2d');ctx.fillStyle=base;ctx.fillRect(0,0,256,256);
- const spots=[[42,55,18,11],[96,40,15,10],[161,62,20,12],[215,42,13,9],[55,132,22,14],[125,112,16,11],[194,137,22,14],[35,205,14,10],[101,216,21,13],[170,204,15,10],[224,220,21,13]];
+ const spots=[
+ [18,20,9,6],[48,34,7,5],[79,18,8,5],[112,31,9,6],[147,17,7,5],[178,36,9,6],[216,20,7,5],[240,48,8,5],
+ [28,72,8,5],[61,88,10,6],[94,65,7,5],[128,82,9,6],[162,68,8,5],[197,91,10,6],[229,75,7,5],
+ [16,122,8,5],[46,140,10,6],[80,119,7,5],[113,145,9,6],[148,125,8,5],[181,148,10,6],[216,126,8,5],[242,154,7,5],
+ [25,181,9,6],[59,201,7,5],[91,177,10,6],[125,198,8,5],[159,181,9,6],[193,207,8,5],[226,185,10,6],
+ [42,237,8,5],[77,225,9,6],[111,244,7,5],[145,226,10,6],[178,242,8,5],[211,224,9,6],[242,246,7,5]
+];
  ctx.fillStyle='#111';spots.forEach(([x,y,rx,ry],i)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,i*.17,0,Math.PI*2);ctx.fill()});
  const tex=new THREE.CanvasTexture(cv);tex.wrapS=THREE.ClampToEdgeWrapping;tex.wrapT=THREE.ClampToEdgeWrapping;tex.needsUpdate=true;return tex;
 }
@@ -430,7 +436,9 @@ function rebuildShape(record){
   record.mesh.position.z=shapeZ;
   surface.add(record.mesh);
 
-  // The visible outline is the actual clipped perimeter.
+  // Draw only the portion of the shape boundary that lies on the
+  // surface. Any part of the original shape extending beyond the surface
+  // must disappear rather than leaving a floating outline outside the bag.
   const edgeZ=shapeZ+.009;
   const edgePoints=clipped.map(p=>new THREE.Vector3(p.x,p.y,edgeZ));
   edgePoints.push(edgePoints[0].clone());
