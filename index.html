@@ -633,9 +633,10 @@ function rebuildShape(record){
   // The fourth shape keeps its outer handle unless its design is the
   // current majority, in which case that edge becomes part of the preview.
   const majority=majorityShapeRecord(surface);
-  const hideFinalOuterHandle=records.length===4 &&
-    record.index===records.length-1 && majority===record;
-  if(!hideFinalOuterHandle){
+  const nextRecord=record.index<records.length-1?records[record.index+1]:null;
+  const hideRightHandle=surfaceMatchesDesign(surface,record) ||
+    (nextRecord&&designsMatch(record,nextRecord));
+  if(!hideRightHandle){
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
   const handlePoints2=[
@@ -659,7 +660,7 @@ function rebuildShape(record){
   // Moving it changes the shape's left edge while leaving the right edge
   // fixed, allowing the user to tighten the first shape from the left while
   // preserving the surface-edge constraint.
-  if(record.index===0){
+  if(record.index===0 && !surfaceMatchesDesign(surface,record)){
     const leftA=new THREE.Vector2(record.leftBoundary.bottom,bottom);
     const leftB=new THREE.Vector2(record.leftBoundary.top,top);
     const leftVisible=record.surface.userData.clipPolygon
