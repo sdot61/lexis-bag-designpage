@@ -286,8 +286,14 @@ function designsMatch(a,b){
 }
 function boundaryLineMaterial(surface,record,handle=false,neighbor=null){
   const matches=neighbor ? designsMatch(record,neighbor) : designMatchesSurface(surface,record);
+  let lineColor=0x000000;
+  if(matches){
+    // A shared boundary belongs visually to the material on either side.
+    // Never borrow the surface's majority-preview color for this line.
+    lineColor=record.texture?0xffffff:new THREE.Color(record.color||0xd9f5f5);
+  }
   return new THREE.LineBasicMaterial({
-    color:matches?surface.material.color:0x000000,
+    color:lineColor,
     transparent:handle,
     opacity:handle?.9:1,
     depthTest:true,
@@ -345,13 +351,9 @@ function hover(obj,on){
    obj.material.color.set(0xd9f5f5);
    return;
  }
- const record=obj.userData?.shapeRecord;
- if(record){
-   const surface=record.surface;
-   obj.material.color.set(designMatchesSurface(surface,record)?surface.material.color:0x000000);
- }else{
-   obj.material.color.set(designColor(obj));
- }
+ // Hover is only a temporary visual state. Restore the shape's own design,
+ // never the surface preview or majority design.
+ obj.material.color.set(designColor(obj));
 }
 function applyDesign(obj,button){
  if(!obj)return;
@@ -407,7 +409,7 @@ function updatePolygonStatus(){
  if(records.length>=4) polygonPickerToggle.textContent='Maximum reached';
  else polygonPickerToggle.innerHTML='Choose Shape <span>▾</span>';
  document.querySelectorAll('.orientation-option').forEach(x=>{
-   x.disabled=records.length>0;
+   x.disabled=false;
    x.classList.toggle('active',x.dataset.orientation===polygonOrientation);
  });
 }
@@ -750,7 +752,11 @@ function addPolygonToSurface(surface,shapeName){
   const actualEnd=Math.min(1,actualStart+minUnit);
   const record={
     surface,index:records.length,start:actualStart,end:actualEnd,
-    shapeName,orientation,color:0xd9f5f5,texture:null,leftBoundary,rightBoundary
+    shapeName,
+    // Each shape keeps the orientation that was selected when it was added.
+    // Later orientation changes affect only the next shape.
+    orientation:polygonOrientation,
+    color:0xd9f5f5,texture:null,leftBoundary,rightBoundary
   };
   records.push(record);
   polygonRecords.set(surface,records);
