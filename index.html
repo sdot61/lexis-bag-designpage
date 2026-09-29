@@ -252,6 +252,31 @@ let draggingHandle=null,dragPlane=null,dragStart=null;
 ray.params.Line.threshold=.035;
 const polygonCounts=new Map();
 const polygonRecords=new Map();
+
+function surfaceDesignAppearance(surface){
+  const records=polygonRecords.get(surface)||[];
+  if(!records.length){
+    surface.material.map=null;
+    surface.material.color.set(0xffffff);
+    surface.material.needsUpdate=true;
+    return;
+  }
+  const counts=new Map();
+  const keyFor=r=>r.texture
+    ? 'texture:'+Object.keys(leopardTextures).find(k=>leopardTextures[k]===r.texture)
+    : 'color:'+new THREE.Color(r.color||0xd9f5f5).getHexString();
+  records.forEach(r=>counts.set(keyFor(r),(counts.get(keyFor(r))||0)+1));
+  let best=records[records.length-1],bestCount=-1;
+  records.forEach(r=>{
+    const count=counts.get(keyFor(r))||0;
+    if(count>bestCount || (count===bestCount && r===records[records.length-1])){
+      best=r;bestCount=count;
+    }
+  });
+  surface.material.map=best.texture||null;
+  surface.material.color.set(best.texture?0xffffff:(best.color||0xd9f5f5));
+  surface.material.needsUpdate=true;
+}
 const surfaceTool=document.getElementById('surfaceTool');
 const polygonPicker=document.getElementById('polygonPicker');
 const polygonMenu=document.getElementById('polygonMenu');
@@ -548,9 +573,9 @@ function rebuildShape(record){
   surface.add(record.edge);
 
   // The right edge is the working adjustment handle for every shape.
-  // Keep the complete boundary visible even after another shape is added or
-  // this shape has been dragged beyond the surface. This is what lets a
-  // user retract an off-surface shape after adding its right-hand neighbor.
+  // Once four shapes exist, the final shape's far edge is part of the finished
+  // surface preview and no longer gets a black adjustment line.
+  if(records.length<4 || record.index<records.length-1){
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
   const handlePoints2=[
@@ -568,6 +593,7 @@ function rebuildShape(record){
   record.handle.userData.handleSide='right';
   record.handle.renderOrder=20;
   surface.add(record.handle);
+  }
 
   // Only the first shape gets a second working handle: its left perimeter.
   // Moving it changes the shape's left edge while leaving the right edge
@@ -599,6 +625,7 @@ function rebuildShape(record){
 function rebuildSurface(surface){
   const records=polygonRecords.get(surface)||[];
   records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
+  surfaceDesignAppearance(surface);
 }
 
 function addPolygonToSurface(surface,shapeName){
@@ -693,51 +720,38 @@ function updateDraggedShape(e){
     // Retraction is unrestricted by the surface perimeter: the first shape's
     // left edge may move inward until the one-fifth minimum width is reached.
     // Only movement farther outward than the far-left surface edge is stopped.
-    const rightX=Math.min(record.rightBoundary.bottom,record.rightBoundary.top);
+    const rightX=record.rightBoundary.bottom;
     const proposedX=p.x;
     const maxLeft=rightX-minUnit*w;
     const newLeft=Math.max(minLeft,Math.min(maxLeft,proposedX));
     const delta=newLeft-record.leftBoundary.bottom;
     record.leftBoundary.bottom+=delta;
     record.leftBoundary.top+=delta;
-    record.start=(newLeft+w/2)/w;
+    record.start=(record.leftBoundary.bottom+w/2)/w;
   }else{
-    const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
-    const minRight=record.start+minUnit;
-    // Never allow the working edge to bury the shape completely beyond the
-    // surface edge. The final shape can reach the face edge, while earlier
-    // shapes retain their encroachment behavior against the next allocation.
-    const nextLimit=i<records.length-1?records[i+1].end:1;
-    const allocationMax=Math.max(minRight,nextLimit);
-
-    // Only the side in the direction in which shapes are being built is
-    // a hard geometric stop. Do not test the top/bottom perimeter: a slanted
-    // boundary is allowed to pass beyond those rounded portions and remain
-    // adjustable. The important constraint is that the working boundary
-    // cannot be pushed past the far left/right side of the surface.
     const w=surface.userData.width;
-    const outwardRightLimit=record.orientation==='left'
-      ? -w/2
-      : w/2;
-    const currentRightX=record.orientation==='left'
-      ? Math.min(record.rightBoundary.bottom,record.rightBoundary.top)
-      : Math.max(record.rightBoundary.bottom,record.rightBoundary.top);
-    const geometryMax=record.orientation==='left'
-      ? Math.max(0,currentRightX-outwardRightLimit)
-      : Math.max(0,outwardRightLimit-currentRightX);
-    const maxRightByGeometry=proposed>record.end
-      ? record.end+geometryMax/w
-      : Infinity;
-    const maxRight=Math.min(allocationMax,maxRightByGeometry);
-    const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
-    const delta=(newEnd-record.end)*surface.userData.width;
+    const currentRight=record.rightBoundary.bottom;
+    const minRightX=record.leftBoundary.bottom+minUnit*w;
+    const farSide=record.orientation==='left' ? -w/2 : w/2;
+
+    // The actual boundary coordinates, rather than the old allocation values,
+    // control dragging. This keeps every parallelogram fluidly adjustable and
+    // preserves its exact slant because both ends move by the same delta.
+    let newRight=p.x;
+    if(record.orientation==='left'){
+      newRight=Math.min(minRightX,Math.max(farSide,newRight));
+    }else{
+      newRight=Math.max(minRightX,Math.min(farSide,newRight));
+    }
+
+    const delta=newRight-currentRight;
     record.rightBoundary.bottom+=delta;
     record.rightBoundary.top+=delta;
-    record.end=newEnd;
+    record.end=(record.rightBoundary.bottom+w/2)/w;
 
     for(let j=i+1;j<records.length;j++){
-      records[j].start=records[j-1].end;
       records[j].leftBoundary=records[j-1].rightBoundary;
+      records[j].start=(records[j].leftBoundary.bottom+w/2)/w;
     }
   }
 
@@ -827,6 +841,8 @@ canvas.addEventListener('click',e=>{
  if(hit?.userData?.isWorkingHandle)return;
  if(hit){
    const base=baseSurface(hit);
+   const baseRecords=polygonRecords.get(base)||[];
+   if(!hit.userData?.shapeRecord && baseRecords.length>=4)return;
    selectedTarget=hit;
    openSurfaceTool(base,hit,e.clientX,e.clientY);
  }
@@ -876,6 +892,7 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
    if(r.edge)selectedSurface.remove(r.edge);
  });
  polygonRecords.set(selectedSurface,[]);
+ surfaceDesignAppearance(selectedSurface);
  surfaceOrientations.delete(selectedSurface);
  polygonOrientation=null;selectedTarget=null;
  document.querySelectorAll('.orientation-option').forEach(x=>{x.disabled=false;x.classList.remove('active')});
