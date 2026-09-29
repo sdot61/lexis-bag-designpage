@@ -217,10 +217,12 @@ surfaces.push(bridge);
 
 // Keep the accessory bridge visually in front of the shape lines on the
 // back panel and top flap. Shape handles remain interactive underneath it.
-bridge.renderOrder=50;
+bridge.renderOrder=1000;
 bridge.material.depthTest=false;
 bridge.material.depthWrite=false;
-bridgeEdges.renderOrder=51;
+bridge.material.transparent=true;
+bridge.material.opacity=1;
+bridgeEdges.renderOrder=1001;
 bridgeEdges.material.depthTest=false;
 bridgeEdges.material.depthWrite=false;
 
@@ -568,8 +570,8 @@ function rebuildShape(record){
 
   // Only the first shape gets a second working handle: its left perimeter.
   // Moving it changes the shape's left edge while leaving the right edge
-  // fixed, allowing the user to narrow/widen the first shape from either side
-  // and intentionally expose some of the underlying surface on the left.
+  // fixed, allowing the user to tighten the first shape from the left while
+  // preserving the surface-edge constraint.
   if(record.index===0){
     const leftA=new THREE.Vector2(record.leftBoundary.bottom,bottom);
     const leftB=new THREE.Vector2(record.leftBoundary.top,top);
@@ -666,17 +668,20 @@ function updateDraggedShape(e){
   const minUnit=1/5;
 
   if(draggingHandle.side==='left'){
-    // The left handle exists only on shape 1. Keep its right boundary fixed
-    // and enforce the same one-fifth minimum width.
+    // The left handle exists only on shape 1. Move the entire left
+    // boundary while keeping the right boundary fixed. The first shape can
+    // therefore be tightened from the left, but never below one-fifth of the
+    // surface width.
+    const w=surface.userData.width;
+    const minLeft=-w/2;
     const rightX=Math.min(record.rightBoundary.bottom,record.rightBoundary.top);
     const proposedX=p.x;
-    const minLeft=-surface.userData.width/2;
-    const maxLeft=rightX-minUnit*surface.userData.width;
+    const maxLeft=rightX-minUnit*w;
     const newLeft=Math.max(minLeft,Math.min(maxLeft,proposedX));
     const delta=newLeft-record.leftBoundary.bottom;
     record.leftBoundary.bottom+=delta;
     record.leftBoundary.top+=delta;
-    record.start=(newLeft+surface.userData.width/2)/surface.userData.width;
+    record.start=(newLeft+w/2)/w;
   }else{
     const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
     const minRight=record.start+minUnit;
@@ -827,6 +832,7 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
  records.forEach(r=>{
    if(r.mesh)selectedSurface.remove(r.mesh);
    if(r.handle)selectedSurface.remove(r.handle);
+   if(r.leftHandle)selectedSurface.remove(r.leftHandle);
    if(r.edge)selectedSurface.remove(r.edge);
  });
  polygonRecords.set(selectedSurface,[]);
