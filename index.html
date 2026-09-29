@@ -690,6 +690,9 @@ function updateDraggedShape(e){
     // surface width.
     const w=surface.userData.width;
     const minLeft=-w/2;
+    // Retraction is unrestricted by the surface perimeter: the first shape's
+    // left edge may move inward until the one-fifth minimum width is reached.
+    // Only movement farther outward than the far-left surface edge is stopped.
     const rightX=Math.min(record.rightBoundary.bottom,record.rightBoundary.top);
     const proposedX=p.x;
     const maxLeft=rightX-minUnit*w;
@@ -707,41 +710,24 @@ function updateDraggedShape(e){
     const nextLimit=i<records.length-1?records[i+1].end:1;
     const allocationMax=Math.max(minRight,nextLimit);
 
-    // The working perimeter itself is constrained by the actual face outline,
-    // not merely by the normalized width. Once either endpoint of the slanted
-    // boundary reaches the surface perimeter, that boundary cannot be pushed
-    // any farther outward. This prevents the black adjustment line from
-    // continuing off the face while the clipped shape remains behind it.
-    let geometryMax=Infinity;
-    const clip=surface.userData.clipPolygon;
-    if(clip?.length && proposed>record.end){
-      const currentBottom=record.rightBoundary.bottom;
-      const currentTop=record.rightBoundary.top;
-      const currentDelta=0;
-      let lo=0,hi=Math.max(0,(proposed-record.end)*surface.userData.width);
-      const boundaryInside=delta=>{
-        const b=new THREE.Vector2(currentBottom+delta,currentTop===currentBottom?currentTop:currentTop+delta);
-        const t=new THREE.Vector2(currentTop+delta,currentTop===currentBottom?currentBottom:currentTop+delta);
-        return pointInSurfacePolygon(b,clip)&&pointInSurfacePolygon(t,clip);
-      };
-      // If the current boundary is already on an edge, no outward movement
-      // is possible. Otherwise find the first point at which either endpoint
-      // leaves the actual surface perimeter.
-      if(!boundaryInside(1e-7)){
-        geometryMax=0;
-      }else{
-        while(boundaryInside(hi) && hi<surface.userData.width*2)hi*=2;
-        for(let k=0;k<32;k++){
-          const mid=(lo+hi)/2;
-          if(boundaryInside(mid))lo=mid;else hi=mid;
-        }
-        geometryMax=lo;
-      }
-    }
-
-    const maxRightByGeometry=Number.isFinite(geometryMax)
-      ? record.end+geometryMax/surface.userData.width
-      : allocationMax;
+    // Only the side in the direction in which shapes are being built is
+    // a hard geometric stop. Do not test the top/bottom perimeter: a slanted
+    // boundary is allowed to pass beyond those rounded portions and remain
+    // adjustable. The important constraint is that the working boundary
+    // cannot be pushed past the far left/right side of the surface.
+    const w=surface.userData.width;
+    const outwardRightLimit=record.orientation==='left'
+      ? -w/2
+      : w/2;
+    const currentRightX=record.orientation==='left'
+      ? Math.min(record.rightBoundary.bottom,record.rightBoundary.top)
+      : Math.max(record.rightBoundary.bottom,record.rightBoundary.top);
+    const geometryMax=record.orientation==='left'
+      ? Math.max(0,currentRightX-outwardRightLimit)
+      : Math.max(0,outwardRightLimit-currentRightX);
+    const maxRightByGeometry=proposed>record.end
+      ? record.end+geometryMax/w
+      : Infinity;
     const maxRight=Math.min(allocationMax,maxRightByGeometry);
     const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
     const delta=(newEnd-record.end)*surface.userData.width;
