@@ -784,9 +784,17 @@ function updateDraggedShape(e){
     // Only the surface edge and a tiny positive width prevent inversion.
     const w=surface.userData.width;
     const minLeft=-w/2;
-    const rightX=record.rightBoundary.bottom;
+    const currentLeft=record.leftBoundary.bottom;
+    const currentLeftTop=record.leftBoundary.top;
+    const rightBottom=record.rightBoundary.bottom;
+    const rightTop=record.rightBoundary.top;
+    const epsilon=w*.008;
+    // Keep the movable left boundary from crossing its fixed right parallel
+    // at either endpoint, including for left-slanting shapes.
+    const maxLeftBottom=rightBottom-epsilon;
+    const maxLeftFromTop=rightTop-epsilon-(currentLeftTop-currentLeft);
+    const maxLeft=Math.min(maxLeftBottom,maxLeftFromTop);
     const proposedX=p.x;
-    const maxLeft=rightX-w*.008;
     const newLeft=Math.max(minLeft,Math.min(maxLeft,proposedX));
     const delta=newLeft-record.leftBoundary.bottom;
     record.leftBoundary.bottom+=delta;
@@ -795,12 +803,19 @@ function updateDraggedShape(e){
   }else{
     const w=surface.userData.width;
     const currentRight=record.rightBoundary.bottom;
-    const minRightX=record.leftBoundary.bottom+w*.008;
+    const currentRightTop=record.rightBoundary.top;
+    const epsilon=w*.008;
+    // Keep the adjustable boundary on the same side of the shape's fixed
+    // parallel boundary at both the bottom and top. Checking only the bottom
+    // endpoint lets a slanted boundary cross its parallel when dragged left.
+    const minRightBottom=record.leftBoundary.bottom+epsilon;
+    const minRightFromTop=record.leftBoundary.top+epsilon-(currentRightTop-currentRight);
+    const minRightX=Math.max(minRightBottom,minRightFromTop);
     const farSide=w/2;
 
     // Do not reserve a one-fifth allocation for each shape. The bottom
-    // endpoint controls horizontal position; the top endpoint follows by the
-    // same delta, preserving the selected parallelogram angle.
+    // endpoint controls horizontal position and the top endpoint follows by
+    // the same delta, preserving the selected parallelogram angle.
     const newRight=Math.max(minRightX,Math.min(farSide,p.x));
 
     const delta=newRight-currentRight;
