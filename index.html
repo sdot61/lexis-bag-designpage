@@ -1019,10 +1019,11 @@ deleteShapeButton.addEventListener('click',e=>{
  const orientation=surfaceOrientations.get(surface)||records[0].orientation||'right';
  records.forEach((r,i)=>{
    r.index=i;
-   r.orientation=orientation;
+   // Preserve each remaining shape's own orientation after deletion.
+   r.orientation=r.orientation||orientation;
    r.start=i===0?0:records[i-1].end;
    if(i===0){
-     const shift=w*(shapeTemplates[r.shapeName]??.085)*(orientation==='left'?-1:1);
+     const shift=w*(shapeTemplates[r.shapeName]??.085)*(r.orientation==='left'?-1:1);
      r.leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
    }else{
      r.leftBoundary=records[i-1].rightBoundary;
