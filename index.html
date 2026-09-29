@@ -490,8 +490,9 @@ function rebuildShape(record){
   record.mesh.position.z=shapeZ;
   surface.add(record.mesh);
 
-  // Draw only original perimeter segments that remain on the surface.
-  // The clipping boundary itself is not drawn, so no artificial line appears where the shape passes behind the bag edge.
+  // Every shape retains its black perimeter while it is on the surface.
+  // Only the portions of the original shape perimeter inside the surface are
+  // rendered, so no line can trail beyond the bag.
   const edgeZ=shapeZ+.009;
   const perimeter=record.surface.userData.clipPolygon
     ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon)
@@ -508,17 +509,28 @@ function rebuildShape(record){
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
 
-  // The final shape keeps a retractable adjustment line only on the side
-  // that remains inside the surface. Earlier shapes use their shared boundary
-  // solely as the boundary between adjacent shapes.
+  // The right edge is always the adjustment handle. If the final shape has
+  // been dragged beyond the surface, retain the portion of that edge from
+  // the surface boundary outward: this gives the user a visible black handle
+  // to grab and retract the shape. When the edge is inside the surface, the
+  // complete edge is shown. For earlier shapes it remains clipped normally.
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
-  const clippedHandle=record.surface.userData.clipPolygon
-    ? clipSegmentToSurfacePerimeter(handleA,handleB,record.surface.userData.clipPolygon)
-    : [handleA,handleB];
-  const handlePoints=clippedHandle.map(p=>new THREE.Vector3(p.x,p.y,shapeZ+.015));
+  let handlePoints2=[];
+  if(record.surface.userData.clipPolygon){
+    const insideHandle=clipSegmentToSurfacePerimeter(handleA,handleB,record.surface.userData.clipPolygon);
+    if(insideHandle.length===2){
+      handlePoints2=insideHandle.map(p=>new THREE.Vector3(p.x,p.y,shapeZ+.015));
+    }else if(records.length && record.index===records.length-1){
+      // The final shape is allowed to show its full adjustment edge even
+      // when it has moved beyond the surface, so it can always be retracted.
+      handlePoints2=[new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)];
+    }
+  }else{
+    handlePoints2=[new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)];
+  }
   record.handle=new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints(handlePoints),
+    new THREE.BufferGeometry().setFromPoints(handlePoints2),
     new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
   );
   record.handle.userData.shapeRecord=record;
