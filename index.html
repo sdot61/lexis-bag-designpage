@@ -606,7 +606,6 @@ function rebuildShape(record){
     ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon)
     : raw;
   const edgePoints=[];
-  const sameAsSurface=surfaceMatchesDesign(record.surface,record);
   for(let i=0;i<perimeter.length;i+=2){
     const a=perimeter[i],b=perimeter[i+1];
     const isFirstShapeLeftEdge=record.index===0 && records.length>=2 &&
@@ -617,7 +616,6 @@ function rebuildShape(record){
       Math.abs(b.x-record.leftBoundary.top)<1e-6;
     const previous=record.index>0?records[record.index-1]:null;
     const sharedMatches=previous&&designsMatch(record,previous);
-    if(sameAsSurface)continue;
     if(isFirstShapeLeftEdge||isSharedWithPrevious&&sharedMatches)continue;
     edgePoints.push(new THREE.Vector3(a.x,a.y,edgeZ));
     edgePoints.push(new THREE.Vector3(b.x,b.y,edgeZ));
