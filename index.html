@@ -476,14 +476,15 @@ function rebuildShape(record){
 
   const shapeGeometry=new THREE.ShapeGeometry(shape);
   if(record.texture){
+    // UVs are normalized to the complete surface, not just the individual
+    // clipped shape. The same leopard pattern therefore spans the entire
+    // underlying panel continuously; each shape shows its portion of that
+    // surface-wide pattern.
     const pos=shapeGeometry.getAttribute('position');
     const uv=shapeGeometry.getAttribute('uv');
-    const xs=[],ys=[];
-    for(let i=0;i<pos.count;i++){xs.push(pos.getX(i));ys.push(pos.getY(i));}
-    const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
-    const spanX=Math.max(1e-6,maxX-minX),spanY=Math.max(1e-6,maxY-minY);
+    const sw=surface.userData.width,sh=surface.userData.height;
     for(let i=0;i<pos.count;i++){
-      uv.setXY(i,(pos.getX(i)-minX)/spanX,(pos.getY(i)-minY)/spanY);
+      uv.setXY(i,(pos.getX(i)+sw/2)/sw,(pos.getY(i)+sh/2)/sh);
     }
     uv.needsUpdate=true;
   }
