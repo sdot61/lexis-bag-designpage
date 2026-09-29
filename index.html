@@ -535,27 +535,16 @@ function rebuildShape(record){
   record.edge.userData.shapeRecord=record;
   surface.add(record.edge);
 
-  // The right edge is always the adjustment handle. If the final shape has
-  // been dragged beyond the surface, retain the portion of that edge from
-  // the surface boundary outward: this gives the user a visible black handle
-  // to grab and retract the shape. When the edge is inside the surface, the
-  // complete edge is shown. For earlier shapes it remains clipped normally.
+  // The right edge is the working adjustment handle for every shape.
+  // Keep the complete boundary visible even after another shape is added or
+  // this shape has been dragged beyond the surface. This is what lets a
+  // user retract an off-surface shape after adding its right-hand neighbor.
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
-  let handlePoints2=[];
-  if(record.surface.userData.clipPolygon){
-    const insideHandle=clipSegmentToSurfacePerimeter(handleA,handleB,record.surface.userData.clipPolygon);
-    if(insideHandle.length===2){
-      handlePoints2=insideHandle.map(p=>new THREE.Vector3(p.x,p.y,shapeZ+.015));
-    }
-    if(records.length && record.index===records.length-1){
-      // The final shape's working edge stays visible in full, including
-      // outside the surface, so it can always be grabbed and pulled back.
-      handlePoints2=[new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)];
-    }
-  }else{
-    handlePoints2=[new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)];
-  }
+  const handlePoints2=[
+    new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),
+    new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)
+  ];
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints2),
     new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:false})
