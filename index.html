@@ -269,37 +269,6 @@ function majorityShapeRecord(surface){
   });
   return best;
 }
-function designMatchesSurface(surface,record){
-  if(!record)return false;
-  const surfaceTexture=surface.material.map;
-  if(record.texture||surfaceTexture){
-    return record.texture===surfaceTexture;
-  }
-  return new THREE.Color(record.color||0xd9f5f5).getHexString() ===
-    new THREE.Color(surface.material.color).getHexString();
-}
-function designsMatch(a,b){
-  if(!a||!b)return false;
-  if(a.texture||b.texture)return a.texture===b.texture;
-  return new THREE.Color(a.color||0xd9f5f5).getHexString() ===
-    new THREE.Color(b.color||0xd9f5f5).getHexString();
-}
-function boundaryLineMaterial(surface,record,handle=false,neighbor=null){
-  const matches=neighbor ? designsMatch(record,neighbor) : designMatchesSurface(surface,record);
-  let lineColor=0x000000;
-  if(matches){
-    // A shared boundary belongs visually to the material on either side.
-    // Never borrow the surface's majority-preview color for this line.
-    lineColor=record.texture?0xffffff:new THREE.Color(record.color||0xd9f5f5);
-  }
-  return new THREE.LineBasicMaterial({
-    color:lineColor,
-    transparent:handle,
-    opacity:handle?.9:1,
-    depthTest:true,
-    depthWrite:false
-  });
-}
 function surfaceDesignAppearance(surface){
   const records=polygonRecords.get(surface)||[];
   const manual=surface.userData.manualDesign;
@@ -329,11 +298,15 @@ function surfaceDesignAppearance(surface){
   }
 
   const best=majorityShapeRecord(surface);
-  const preview=best||records[0];
-  surface.userData.manualDesign=null;
-  surface.material.map=preview.texture||null;
-  surface.material.color.set(preview.texture?0xffffff:(preview.color||0xd9f5f5));
-  // With no majority, the surface returns to the first shape's design.
+  if(best){
+    surface.userData.manualDesign=null;
+    surface.material.map=best.texture||null;
+    surface.material.color.set(best.texture?0xffffff:(best.color||0xd9f5f5));
+  }else if(manual){
+    surface.material.map=manual.texture||null;
+    surface.material.color.set(manual.texture?0xffffff:(manual.color||0xffffff));
+  }
+  // With no majority, leave the existing surface appearance unchanged.
   surface.userData.designColor=surface.material.color.clone();
   surface.material.needsUpdate=true;
 }
@@ -347,13 +320,7 @@ function baseSurface(obj){return obj?.userData.baseSurface||obj||null}
 function designColor(obj){return obj?.userData.designColor||0xffffff}
 function hover(obj,on){
  if(!obj?.material)return;
- if(on){
-   obj.material.color.set(0xd9f5f5);
-   return;
- }
- // Hover is only a temporary visual state. Restore the shape's own design,
- // never the surface preview or majority design.
- obj.material.color.set(designColor(obj));
+ obj.material.color.set(on?0xd9f5f5:designColor(obj));
 }
 function applyDesign(obj,button){
  if(!obj)return;
@@ -409,7 +376,7 @@ function updatePolygonStatus(){
  if(records.length>=4) polygonPickerToggle.textContent='Maximum reached';
  else polygonPickerToggle.innerHTML='Choose Shape <span>▾</span>';
  document.querySelectorAll('.orientation-option').forEach(x=>{
-   x.disabled=false;
+   x.disabled=records.length>0;
    x.classList.toggle('active',x.dataset.orientation===polygonOrientation);
  });
 }
@@ -445,36 +412,6 @@ function clipPolygon(points,axis,value,keepGreater){
   return out;
 }
 
-function clipPolygonAgainstLine(points,a,b,keepSign){
-  if(!points?.length)return [];
-  const out=[];
-  const side=p=>((b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x))*keepSign;
-  for(let i=0;i<points.length;i++){
-    const P=points[i],Q=points[(i+1)%points.length];
-    const pIn=side(P)>=-1e-9,qIn=side(Q)>=-1e-9;
-    if(pIn!==qIn){
-      const sP=side(P),sQ=side(Q),den=sP-sQ;
-      if(Math.abs(den)>1e-12){
-        const t=sP/den;
-        out.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
-      }
-    }
-    if(qIn)out.push(Q.clone());
-  }
-  return out;
-}
-function clipSegmentAgainstLine(a,b,lineA,lineB,keepSign){
-  const sa=((lineB.x-lineA.x)*(a.y-lineA.y)-(lineB.y-lineA.y)*(a.x-lineA.x))*keepSign;
-  const sb=((lineB.x-lineA.x)*(b.y-lineA.y)-(lineB.y-lineA.y)*(b.x-lineA.x))*keepSign;
-  const aIn=sa>=-1e-9,bIn=sb>=-1e-9;
-  if(aIn&&bIn)return [a.clone(),b.clone()];
-  if(!aIn&&!bIn)return [];
-  const den=sa-sb;
-  if(Math.abs(den)<1e-12)return [];
-  const t=sa/den;
-  const hit=a.clone().lerp(b,t);
-  return aIn?[a.clone(),hit]:[hit,b.clone()];
-}
 function clipAgainstConvexPolygon(points,clipPoints){
   if(!clipPoints?.length)return points;
   let subject=points.map(p=>p.clone()),area=0;
@@ -590,27 +527,6 @@ function rebuildShape(record){
   let clipped=record.surface.userData.clipPolygon
     ? clipAgainstConvexPolygon(raw,record.surface.userData.clipPolygon)
     : raw;
-  // When this shape slopes opposite to the immediately preceding shape,
-  // its left boundary is that preceding shape's right boundary. The current
-  // shape must remain on the outside of that boundary; clipping here prevents
-  // its right edge from entering the neighboring shape and naturally turns
-  // the shape into a triangle once the two sloping boundaries intersect.
-  const previous=record.index>0?records[record.index-1]:null;
-  const opposing=!!previous && previous.orientation!==record.orientation;
-  const opposingA=opposing
-    ? new THREE.Vector2(record.leftBoundary.bottom,bottom)
-    : null;
-  const opposingB=opposing
-    ? new THREE.Vector2(record.leftBoundary.top,top)
-    : null;
-  const opposingTest=new THREE.Vector2(record.rightBoundary.bottom,bottom);
-  const opposingCross=opposing
-    ? (opposingB.x-opposingA.x)*(opposingTest.y-opposingA.y)-
-      (opposingB.y-opposingA.y)*(opposingTest.x-opposingA.x)
-    : 1;
-  const opposingKeepSign=opposingCross>=0?1:-1;
-  if(opposing)clipped=clipPolygonAgainstLine(clipped,opposingA,opposingB,opposingKeepSign);
-
   // Keep exact rectangular fallback behavior for any surface without a
   // contour definition.
   if(!record.surface.userData.clipPolygon){
@@ -670,40 +586,28 @@ function rebuildShape(record){
   record.mesh.position.z=shapeZ;
   surface.add(record.mesh);
 
-  // Render each perimeter segment with the correct boundary rule:
-  // outer edges disappear when the shape matches the surface, while a shared
-  // edge disappears when the two neighboring shapes have the same design.
-  // Non-first shapes do not draw their left edge because that shared boundary
-  // is owned by the preceding shape.
+  // Every shape retains its black perimeter while it is on the surface.
+  // Only the portions of the original shape perimeter inside the surface are
+  // rendered, so no line can trail beyond the bag.
   const edgeZ=shapeZ+.009;
-  const edgeSegments=[];
-  for(let i=0;i<raw.length;i++){
-    if(i===3 && record.index>0)continue;
-    let clippedSegment=record.surface.userData.clipPolygon
-      ? clipSegmentToSurfacePerimeter(raw[i],raw[(i+1)%raw.length],record.surface.userData.clipPolygon)
-      : [raw[i],raw[(i+1)%raw.length]];
-    if(clippedSegment.length===2&&opposing){
-      clippedSegment=clipSegmentAgainstLine(
-        clippedSegment[0],clippedSegment[1],
-        opposingA,opposingB,opposingKeepSign
-      );
-    }
-    if(clippedSegment.length!==2)continue;
-    const neighbor=(i===1 && record.index<records.length-1)
-      ? records[record.index+1]
-      : null;
-    const material=boundaryLineMaterial(surface,record,false,neighbor);
-    edgeSegments.push(new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(clippedSegment[0].x,clippedSegment[0].y,edgeZ),
-        new THREE.Vector3(clippedSegment[1].x,clippedSegment[1].y,edgeZ)
-      ]),
-      material
-    ));
+  const perimeter=record.surface.userData.clipPolygon
+    ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon)
+    : raw;
+  const edgePoints=[];
+  for(let i=0;i<perimeter.length;i+=2){
+    const a=perimeter[i],b=perimeter[i+1];
+    const isFirstShapeLeftEdge=record.index===0 && records.length>=2 &&
+      Math.abs(a.x-record.leftBoundary.bottom)<1e-6 &&
+      Math.abs(b.x-record.leftBoundary.top)<1e-6;
+    if(isFirstShapeLeftEdge)continue;
+    edgePoints.push(new THREE.Vector3(a.x,a.y,edgeZ));
+    edgePoints.push(new THREE.Vector3(b.x,b.y,edgeZ));
   }
-  record.edge=new THREE.Group();
+  record.edge=new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints(edgePoints),
+    new THREE.LineBasicMaterial({color:0x000000,depthTest:true,depthWrite:false})
+  );
   record.edge.userData.shapeRecord=record;
-  edgeSegments.forEach(segment=>record.edge.add(segment));
   surface.add(record.edge);
 
   // The fourth shape keeps its outer handle unless its design is the
@@ -714,22 +618,13 @@ function rebuildShape(record){
   if(!hideFinalOuterHandle){
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
-  let handleSegment=record.surface.userData.clipPolygon
-    ? clipSegmentToSurfacePerimeter(handleA,handleB,record.surface.userData.clipPolygon)
-    : [handleA,handleB];
-  if(handleSegment.length===2&&opposing){
-    handleSegment=clipSegmentAgainstLine(
-      handleSegment[0],handleSegment[1],
-      opposingA,opposingB,opposingKeepSign
-    );
-  }
-  const handlePoints2=(handleSegment.length===2?handleSegment:[handleA,handleB]).map(p=>
-    new THREE.Vector3(p.x,p.y,shapeZ+.015)
-  );
-  const rightNeighbor=record.index<records.length-1?records[record.index+1]:null;
+  const handlePoints2=[
+    new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),
+    new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)
+  ];
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints2),
-    boundaryLineMaterial(surface,record,true,rightNeighbor)
+    new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:true,depthWrite:false})
   );
   record.handle.userData.shapeRecord=record;
   record.handle.userData.isShapeHandle=true;
@@ -755,7 +650,7 @@ function rebuildShape(record){
       : [new THREE.Vector3(leftA.x,leftA.y,shapeZ+.015),new THREE.Vector3(leftB.x,leftB.y,shapeZ+.015)];
     record.leftHandle=new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(leftPoints),
-      boundaryLineMaterial(surface,record,true)
+      new THREE.LineBasicMaterial({color:0x000000,transparent:true,opacity:.9,depthTest:true,depthWrite:false})
     );
     record.leftHandle.userData.shapeRecord=record;
     record.leftHandle.userData.isShapeHandle=true;
@@ -769,10 +664,8 @@ function rebuildShape(record){
 
 function rebuildSurface(surface){
   const records=polygonRecords.get(surface)||[];
-  // Update the surface first so boundary materials compare against the
-  // current preview, not the previous surface color/design.
-  surfaceDesignAppearance(surface);
   records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
+  surfaceDesignAppearance(surface);
 }
 
 function addPolygonToSurface(surface,shapeName){
@@ -817,11 +710,7 @@ function addPolygonToSurface(surface,shapeName){
   const actualEnd=Math.min(1,actualStart+minUnit);
   const record={
     surface,index:records.length,start:actualStart,end:actualEnd,
-    shapeName,
-    // Each shape keeps the orientation that was selected when it was added.
-    // Later orientation changes affect only the next shape.
-    orientation:polygonOrientation,
-    color:0xd9f5f5,texture:null,leftBoundary,rightBoundary
+    shapeName,orientation,color:0xd9f5f5,texture:null,leftBoundary,rightBoundary
   };
   records.push(record);
   polygonRecords.set(surface,records);
@@ -1011,9 +900,6 @@ document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
      color:pattern?0xffffff:new THREE.Color(b.dataset.color)
    };
    applyDesign(surface,b);
-   // Rebuild boundary materials immediately so a surface recolored to match
-   // its shape also recolors the existing perimeter/handle lines.
-   rebuildSurface(surface);
    selectedSurface=surface;
    selectedTarget=surface;
  }
@@ -1087,11 +973,10 @@ deleteShapeButton.addEventListener('click',e=>{
  const orientation=surfaceOrientations.get(surface)||records[0].orientation||'right';
  records.forEach((r,i)=>{
    r.index=i;
-   // Preserve each remaining shape's own orientation after deletion.
-   r.orientation=r.orientation||orientation;
+   r.orientation=orientation;
    r.start=i===0?0:records[i-1].end;
    if(i===0){
-     const shift=w*(shapeTemplates[r.shapeName]??.085)*(r.orientation==='left'?-1:1);
+     const shift=w*(shapeTemplates[r.shapeName]??.085)*(orientation==='left'?-1:1);
      r.leftBoundary={bottom:-w/2-shift/2,top:-w/2+shift/2};
    }else{
      r.leftBoundary=records[i-1].rightBoundary;
