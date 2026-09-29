@@ -303,7 +303,7 @@ function updatePolygonStatus(){
  if(records.length>=4) polygonPickerToggle.textContent='Maximum reached';
  else polygonPickerToggle.innerHTML='Choose Shape <span>▾</span>';
  document.querySelectorAll('.orientation-option').forEach(x=>{
-   x.disabled=!!polygonOrientation||records.length>0;
+   x.disabled=records.length>0;
    x.classList.toggle('active',x.dataset.orientation===polygonOrientation);
  });
 }
