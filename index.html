@@ -445,6 +445,36 @@ function clipPolygon(points,axis,value,keepGreater){
   return out;
 }
 
+function clipPolygonAgainstLine(points,a,b,keepSign){
+  if(!points?.length)return [];
+  const out=[];
+  const side=p=>((b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x))*keepSign;
+  for(let i=0;i<points.length;i++){
+    const P=points[i],Q=points[(i+1)%points.length];
+    const pIn=side(P)>=-1e-9,qIn=side(Q)>=-1e-9;
+    if(pIn!==qIn){
+      const sP=side(P),sQ=side(Q),den=sP-sQ;
+      if(Math.abs(den)>1e-12){
+        const t=sP/den;
+        out.push(new THREE.Vector2(P.x+(Q.x-P.x)*t,P.y+(Q.y-P.y)*t));
+      }
+    }
+    if(qIn)out.push(Q.clone());
+  }
+  return out;
+}
+function clipSegmentAgainstLine(a,b,lineA,lineB,keepSign){
+  const sa=((lineB.x-lineA.x)*(a.y-lineA.y)-(lineB.y-lineA.y)*(a.x-lineA.x))*keepSign;
+  const sb=((lineB.x-lineA.x)*(b.y-lineA.y)-(lineB.y-lineA.y)*(b.x-lineA.x))*keepSign;
+  const aIn=sa>=-1e-9,bIn=sb>=-1e-9;
+  if(aIn&&bIn)return [a.clone(),b.clone()];
+  if(!aIn&&!bIn)return [];
+  const den=sa-sb;
+  if(Math.abs(den)<1e-12)return [];
+  const t=sa/den;
+  const hit=a.clone().lerp(b,t);
+  return aIn?[a.clone(),hit]:[hit,b.clone()];
+}
 function clipAgainstConvexPolygon(points,clipPoints){
   if(!clipPoints?.length)return points;
   let subject=points.map(p=>p.clone()),area=0;
@@ -560,6 +590,27 @@ function rebuildShape(record){
   let clipped=record.surface.userData.clipPolygon
     ? clipAgainstConvexPolygon(raw,record.surface.userData.clipPolygon)
     : raw;
+  // When this shape slopes opposite to the immediately preceding shape,
+  // its left boundary is that preceding shape's right boundary. The current
+  // shape must remain on the outside of that boundary; clipping here prevents
+  // its right edge from entering the neighboring shape and naturally turns
+  // the shape into a triangle once the two sloping boundaries intersect.
+  const previous=record.index>0?records[record.index-1]:null;
+  const opposing=!!previous && previous.orientation!==record.orientation;
+  const opposingA=opposing
+    ? new THREE.Vector2(record.leftBoundary.bottom,bottom)
+    : null;
+  const opposingB=opposing
+    ? new THREE.Vector2(record.leftBoundary.top,top)
+    : null;
+  const opposingTest=new THREE.Vector2(record.rightBoundary.bottom,bottom);
+  const opposingCross=opposing
+    ? (opposingB.x-opposingA.x)*(opposingTest.y-opposingA.y)-
+      (opposingB.y-opposingA.y)*(opposingTest.x-opposingA.x)
+    : 1;
+  const opposingKeepSign=opposingCross>=0?1:-1;
+  if(opposing)clipped=clipPolygonAgainstLine(clipped,opposingA,opposingB,opposingKeepSign);
+
   // Keep exact rectangular fallback behavior for any surface without a
   // contour definition.
   if(!record.surface.userData.clipPolygon){
@@ -628,9 +679,15 @@ function rebuildShape(record){
   const edgeSegments=[];
   for(let i=0;i<raw.length;i++){
     if(i===3 && record.index>0)continue;
-    const clippedSegment=record.surface.userData.clipPolygon
+    let clippedSegment=record.surface.userData.clipPolygon
       ? clipSegmentToSurfacePerimeter(raw[i],raw[(i+1)%raw.length],record.surface.userData.clipPolygon)
       : [raw[i],raw[(i+1)%raw.length]];
+    if(clippedSegment.length===2&&opposing){
+      clippedSegment=clipSegmentAgainstLine(
+        clippedSegment[0],clippedSegment[1],
+        opposingA,opposingB,opposingKeepSign
+      );
+    }
     if(clippedSegment.length!==2)continue;
     const neighbor=(i===1 && record.index<records.length-1)
       ? records[record.index+1]
@@ -657,10 +714,18 @@ function rebuildShape(record){
   if(!hideFinalOuterHandle){
   const handleA=new THREE.Vector2(record.rightBoundary.bottom,bottom);
   const handleB=new THREE.Vector2(record.rightBoundary.top,top);
-  const handlePoints2=[
-    new THREE.Vector3(handleA.x,handleA.y,shapeZ+.015),
-    new THREE.Vector3(handleB.x,handleB.y,shapeZ+.015)
-  ];
+  let handleSegment=record.surface.userData.clipPolygon
+    ? clipSegmentToSurfacePerimeter(handleA,handleB,record.surface.userData.clipPolygon)
+    : [handleA,handleB];
+  if(handleSegment.length===2&&opposing){
+    handleSegment=clipSegmentAgainstLine(
+      handleSegment[0],handleSegment[1],
+      opposingA,opposingB,opposingKeepSign
+    );
+  }
+  const handlePoints2=(handleSegment.length===2?handleSegment:[handleA,handleB]).map(p=>
+    new THREE.Vector3(p.x,p.y,shapeZ+.015)
+  );
   const rightNeighbor=record.index<records.length-1?records[record.index+1]:null;
   record.handle=new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(handlePoints2),
@@ -946,6 +1011,9 @@ document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
      color:pattern?0xffffff:new THREE.Color(b.dataset.color)
    };
    applyDesign(surface,b);
+   // Rebuild boundary materials immediately so a surface recolored to match
+   // its shape also recolors the existing perimeter/handle lines.
+   rebuildSurface(surface);
    selectedSurface=surface;
    selectedTarget=surface;
  }
