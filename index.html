@@ -805,20 +805,33 @@ function updateDraggedShape(e){
     const currentRight=record.rightBoundary.bottom;
     const currentRightTop=record.rightBoundary.top;
     const epsilon=w*.008;
-    // Keep the adjustable boundary on the same side of the shape's fixed
-    // parallel boundary at both the bottom and top. Checking only the bottom
-    // endpoint lets a slanted boundary cross its parallel when dragged left.
-    const minRightBottom=record.leftBoundary.bottom+epsilon;
-    const minRightFromTop=record.leftBoundary.top+epsilon-(currentRightTop-currentRight);
-    const minRightX=Math.max(minRightBottom,minRightFromTop);
-    const farSide=w/2;
 
-    // Do not reserve a one-fifth allocation for each shape. The bottom
-    // endpoint controls horizontal position and the top endpoint follows by
-    // the same delta, preserving the selected parallelogram angle.
-    const newRight=Math.max(minRightX,Math.min(farSide,p.x));
+    // The adjustable boundary is shared with the next shape. It therefore
+    // must stay strictly before that next shape's fixed right boundary at
+    // BOTH endpoints; otherwise the shared line can be dragged through the
+    // next shape and its color will visually overtake the line.
+    const minDeltaFromOwnLeft=record.leftBoundary.bottom+epsilon-currentRight;
+    const minDeltaFromOwnLeftTop=record.leftBoundary.top+epsilon-currentRightTop;
+    const minDelta=Math.max(minDeltaFromOwnLeft,minDeltaFromOwnLeftTop);
 
-    const delta=newRight-currentRight;
+    const nextRecord=records[i+1];
+    const maxRightBottom=nextRecord
+      ? nextRecord.rightBoundary.bottom-epsilon
+      : w/2-epsilon;
+    const maxRightTop=nextRecord
+      ? nextRecord.rightBoundary.top-epsilon
+      : w/2-epsilon;
+    const maxDeltaFromNextBottom=maxRightBottom-currentRight;
+    const maxDeltaFromNextTop=maxRightTop-currentRightTop;
+    const maxDelta=Math.min(maxDeltaFromNextBottom,maxDeltaFromNextTop);
+
+    // The boundary moves as a rigid parallel line. Clamp the requested
+    // movement by the nearest endpoint constraint, not just by its bottom
+    // endpoint. This guarantees that it cannot cross either the shape's own
+    // fixed boundary or the next shape's fixed boundary.
+    const requestedDelta=p.x-currentRight;
+    const delta=Math.max(minDelta,Math.min(maxDelta,requestedDelta));
+
     record.rightBoundary.bottom+=delta;
     record.rightBoundary.top+=delta;
     record.end=(record.rightBoundary.bottom+w/2)/w;
