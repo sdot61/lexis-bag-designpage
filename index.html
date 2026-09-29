@@ -605,13 +605,14 @@ function surfaceIntersection(e,surface){
   const localRay=ray.ray.clone();
   const inv=new THREE.Matrix4().copy(surface.matrixWorld).invert();
   localRay.applyMatrix4(inv);
-  // Shapes live at local z=.24 above their surface.
-  const plane=new THREE.Plane(new THREE.Vector3(0,0,1),-.24);
-  const hit=new THREE.Vector3();
-  return plane.intersectLine(
-    new THREE.Line3(localRay.origin,localRay.origin.clone().add(localRay.direction.multiplyScalar(1000))),
-    hit
-  )?hit:null;
+  // Intersect the surface's local XY plane. The resulting point is used
+  // directly for the boundary calculation, independent of which external
+  // face the shape is rendered on.
+  localRay.origin.z=0;
+  if(Math.abs(localRay.direction.z)<1e-9)return null;
+  const t=-localRay.origin.z/localRay.direction.z;
+  if(t<0)return null;
+  return localRay.origin.clone().addScaledVector(localRay.direction,t);
 }
 
 function updateDraggedShape(e){
