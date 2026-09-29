@@ -705,7 +705,44 @@ function updateDraggedShape(e){
     // surface edge. The final shape can reach the face edge, while earlier
     // shapes retain their encroachment behavior against the next allocation.
     const nextLimit=i<records.length-1?records[i+1].end:1;
-    const maxRight=Math.max(minRight,nextLimit);
+    const allocationMax=Math.max(minRight,nextLimit);
+
+    // The working perimeter itself is constrained by the actual face outline,
+    // not merely by the normalized width. Once either endpoint of the slanted
+    // boundary reaches the surface perimeter, that boundary cannot be pushed
+    // any farther outward. This prevents the black adjustment line from
+    // continuing off the face while the clipped shape remains behind it.
+    let geometryMax=Infinity;
+    const clip=surface.userData.clipPolygon;
+    if(clip?.length && proposed>record.end){
+      const currentBottom=record.rightBoundary.bottom;
+      const currentTop=record.rightBoundary.top;
+      const currentDelta=0;
+      let lo=0,hi=Math.max(0,(proposed-record.end)*surface.userData.width);
+      const boundaryInside=delta=>{
+        const b=new THREE.Vector2(currentBottom+delta,currentTop===currentBottom?currentTop:currentTop+delta);
+        const t=new THREE.Vector2(currentTop+delta,currentTop===currentBottom?currentBottom:currentTop+delta);
+        return pointInSurfacePolygon(b,clip)&&pointInSurfacePolygon(t,clip);
+      };
+      // If the current boundary is already on an edge, no outward movement
+      // is possible. Otherwise find the first point at which either endpoint
+      // leaves the actual surface perimeter.
+      if(!boundaryInside(1e-7)){
+        geometryMax=0;
+      }else{
+        while(boundaryInside(hi) && hi<surface.userData.width*2)hi*=2;
+        for(let k=0;k<32;k++){
+          const mid=(lo+hi)/2;
+          if(boundaryInside(mid))lo=mid;else hi=mid;
+        }
+        geometryMax=lo;
+      }
+    }
+
+    const maxRightByGeometry=Number.isFinite(geometryMax)
+      ? record.end+geometryMax/surface.userData.width
+      : allocationMax;
+    const maxRight=Math.min(allocationMax,maxRightByGeometry);
     const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
     const delta=(newEnd-record.end)*surface.userData.width;
     record.rightBoundary.bottom+=delta;
