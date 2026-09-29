@@ -635,10 +635,9 @@ function surfaceIntersection(e,surface){
   const localRay=ray.ray.clone();
   const inv=new THREE.Matrix4().copy(surface.matrixWorld).invert();
   localRay.applyMatrix4(inv);
-  // Intersect the surface's local XY plane. The resulting point is used
-  // directly for the boundary calculation, independent of which external
-  // face the shape is rendered on.
-  localRay.origin.z=0;
+  // Intersect the ray with the surface's local XY plane without altering
+  // the ray origin. Resetting origin.z before calculating t changes the
+  // ray's actual intersection point and makes the handle feel stuck.
   if(Math.abs(localRay.direction.z)<1e-9)return null;
   const t=-localRay.origin.z/localRay.direction.z;
   if(t<0)return null;
