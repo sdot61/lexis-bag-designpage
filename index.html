@@ -255,16 +255,24 @@ const polygonRecords=new Map();
 
 function surfaceDesignAppearance(surface){
   const records=polygonRecords.get(surface)||[];
-  // The first shape remains the only visible design, with the underlying
-  // surface intentionally left blank. Once a second shape exists, the
-  // unoccupied face previews the majority design, with the newest design
-  // breaking ties.
+  const manual=surface.userData.manualDesign;
+
+  if(manual){
+    surface.material.map=manual.texture||null;
+    surface.material.color.set(manual.texture?0xffffff:(manual.color||0xffffff));
+    surface.material.needsUpdate=true;
+    return;
+  }
+
+  // The first shape leaves the underlying face blank. With two or more
+  // shapes, preview the majority design; the newest shape breaks ties.
   if(records.length<=1){
     surface.material.map=null;
     surface.material.color.set(0xffffff);
     surface.material.needsUpdate=true;
     return;
   }
+
   const counts=new Map();
   const keyFor=r=>r.texture
     ? 'texture:'+Object.keys(leopardTextures).find(k=>leopardTextures[k]===r.texture)
@@ -712,21 +720,14 @@ function updateDraggedShape(e){
   const records=polygonRecords.get(surface)||[];
   const record=draggingHandle.record;
   const i=record.index;
-  const minUnit=1/5;
-
   if(draggingHandle.side==='left'){
-    // The left handle exists only on shape 1. Move the entire left
-    // boundary while keeping the right boundary fixed. The first shape can
-    // therefore be tightened from the left, but never below one-fifth of the
-    // surface width.
+    // The first shape may retract almost to its fixed right boundary.
+    // Only the surface edge and a tiny positive width prevent inversion.
     const w=surface.userData.width;
     const minLeft=-w/2;
-    // Retraction is unrestricted by the surface perimeter: the first shape's
-    // left edge may move inward until the one-fifth minimum width is reached.
-    // Only movement farther outward than the far-left surface edge is stopped.
     const rightX=record.rightBoundary.bottom;
     const proposedX=p.x;
-    const maxLeft=rightX-minUnit*w;
+    const maxLeft=rightX-w*.008;
     const newLeft=Math.max(minLeft,Math.min(maxLeft,proposedX));
     const delta=newLeft-record.leftBoundary.bottom;
     record.leftBoundary.bottom+=delta;
@@ -735,12 +736,13 @@ function updateDraggedShape(e){
   }else{
     const w=surface.userData.width;
     const currentRight=record.rightBoundary.bottom;
-    const minRightX=record.leftBoundary.bottom+minUnit*w;
+    const minRightX=record.leftBoundary.bottom+w*.008;
     const farSide=w/2;
 
-    // The actual boundary coordinates, rather than the old allocation values,
-    // control dragging. This keeps every parallelogram fluidly adjustable and
-    // preserves its exact slant because both ends move by the same delta.
+    // Do not reserve a one-fifth allocation for each shape. Boundaries can
+    // pass through neighboring shapes, allowing encroachment while preserving
+    // the parallelogram's slant. Only inversion and the far surface edge are
+    // prevented.
     let newRight=p.x;
     if(record.orientation==='left'){
       newRight=Math.min(minRightX,Math.max(farSide,newRight));
@@ -845,8 +847,6 @@ canvas.addEventListener('click',e=>{
  if(hit?.userData?.isWorkingHandle)return;
  if(hit){
    const base=baseSurface(hit);
-   const baseRecords=polygonRecords.get(base)||[];
-   if(!hit.userData?.shapeRecord && baseRecords.length>=4)return;
    selectedTarget=hit;
    openSurfaceTool(base,hit,e.clientX,e.clientY);
  }
@@ -860,13 +860,23 @@ document.getElementById('messengerButton').addEventListener('click',()=>group.vi
 document.querySelectorAll('.size-option').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.size-option').forEach(x=>x.classList.remove('active'));b.classList.add('active')}));
 document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>{
  if(!selectedTarget)return;
- applyDesign(selectedTarget,b);
  const record=selectedTarget.userData.shapeRecord;
  if(record){
    if(b.dataset.pattern){record.texture=leopardTextures[b.dataset.pattern];record.color=0xffffff}
    else{record.texture=null;record.color=new THREE.Color(b.dataset.color)}
-   rebuildShape(record);
+   rebuildSurface(record.surface);
    selectedTarget=record.mesh;
+ }else{
+   const surface=baseSurface(selectedTarget);
+   if(!surface)return;
+   const pattern=b.dataset.pattern;
+   surface.userData.manualDesign={
+     texture:pattern?leopardTextures[pattern]:null,
+     color:pattern?0xffffff:new THREE.Color(b.dataset.color)
+   };
+   applyDesign(surface,b);
+   selectedSurface=surface;
+   selectedTarget=surface;
  }
 }));
 function updateShapeChoiceDirection(orientation){
@@ -896,6 +906,7 @@ document.getElementById('resetPolygons').addEventListener('click',e=>{
    if(r.edge)selectedSurface.remove(r.edge);
  });
  polygonRecords.set(selectedSurface,[]);
+ selectedSurface.userData.manualDesign=null;
  surfaceDesignAppearance(selectedSurface);
  surfaceOrientations.delete(selectedSurface);
  polygonOrientation=null;selectedTarget=null;
@@ -922,6 +933,7 @@ deleteShapeButton.addEventListener('click',e=>{
 
  if(records.length===0){
    polygonRecords.set(surface,[]);
+   surface.userData.manualDesign=null;
    surfaceOrientations.delete(surface);
    polygonOrientation=null;
    selectedTarget=null;
