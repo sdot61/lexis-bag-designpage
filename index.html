@@ -215,6 +215,15 @@ bridgeEdges.position.copy(bridge.position); bridgeEdges.rotation.copy(bridge.rot
 group.add(bridge,bridgeEdges);
 surfaces.push(bridge);
 
+// Keep the accessory bridge visually in front of the shape lines on the
+// back panel and top flap. Shape handles remain interactive underneath it.
+bridge.renderOrder=50;
+bridge.material.depthTest=false;
+bridge.material.depthWrite=false;
+bridgeEdges.renderOrder=51;
+bridgeEdges.material.depthTest=false;
+bridgeEdges.material.depthWrite=false;
+
 // Curved opening contour.
 const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(-1.40,1.34,.61),new THREE.Vector3(0,1.05,.70),new THREE.Vector3(1.40,1.34,.61));
 group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(48)),black()));
@@ -661,8 +670,9 @@ function updateDraggedShape(e){
     // and enforce the same one-fifth minimum width.
     const rightX=Math.min(record.rightBoundary.bottom,record.rightBoundary.top);
     const proposedX=p.x;
-    const minLeft=rightX-minUnit*surface.userData.width;
-    const newLeft=Math.min(proposedX,rightX-minUnit*surface.userData.width);
+    const minLeft=-surface.userData.width/2;
+    const maxLeft=rightX-minUnit*surface.userData.width;
+    const newLeft=Math.max(minLeft,Math.min(maxLeft,proposedX));
     const delta=newLeft-record.leftBoundary.bottom;
     record.leftBoundary.bottom+=delta;
     record.leftBoundary.top+=delta;
