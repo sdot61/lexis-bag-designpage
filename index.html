@@ -258,6 +258,18 @@ function designKey(record){
     ? 'texture:'+Object.keys(leopardTextures).find(k=>leopardTextures[k]===record.texture)
     : 'color:'+new THREE.Color(record.color||0xd9f5f5).getHexString();
 }
+function designsMatch(a,b){
+  return !!a&&!!b&&designKey(a)===designKey(b);
+}
+function surfaceMatchesDesign(surface,record){
+  if(!surface||!record)return false;
+  if(record.texture||surface.material.map)return record.texture===surface.material.map;
+  const surfaceColor=surface.userData.designColor instanceof THREE.Color
+    ? surface.userData.designColor
+    : new THREE.Color(surface.userData.designColor||surface.material.color||0xffffff);
+  const recordColor=new THREE.Color(record.color||0xd9f5f5);
+  return surfaceColor.getHex()===recordColor.getHex();
+}
 function majorityShapeRecord(surface){
   const records=polygonRecords.get(surface)||[];
   const counts=new Map();
@@ -594,6 +606,7 @@ function rebuildShape(record){
     ? clippedOriginalPerimeter(raw,record.surface.userData.clipPolygon)
     : raw;
   const edgePoints=[];
+  const sameAsSurface=surfaceMatchesDesign(record.surface,record);
   for(let i=0;i<perimeter.length;i+=2){
     const a=perimeter[i],b=perimeter[i+1];
     const isFirstShapeLeftEdge=record.index===0 && records.length>=2 &&
@@ -604,6 +617,7 @@ function rebuildShape(record){
       Math.abs(b.x-record.leftBoundary.top)<1e-6;
     const previous=record.index>0?records[record.index-1]:null;
     const sharedMatches=previous&&designsMatch(record,previous);
+    if(sameAsSurface)continue;
     if(isFirstShapeLeftEdge||isSharedWithPrevious&&sharedMatches)continue;
     edgePoints.push(new THREE.Vector3(a.x,a.y,edgeZ));
     edgePoints.push(new THREE.Vector3(b.x,b.y,edgeZ));
@@ -669,8 +683,10 @@ function rebuildShape(record){
 
 function rebuildSurface(surface){
   const records=polygonRecords.get(surface)||[];
-  records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
+  // Establish the effective surface design first so shape boundaries can
+  // determine whether they are actually separating two different designs.
   surfaceDesignAppearance(surface);
+  records.forEach((r,i)=>{r.index=i;rebuildShape(r)});
 }
 
 function addPolygonToSurface(surface,shapeName){
