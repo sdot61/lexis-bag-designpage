@@ -122,7 +122,10 @@ function makeLeopardTexture(base){
  [42,237,8,5],[77,225,9,6],[111,244,7,5],[145,226,10,6],[178,242,8,5],[211,224,9,6],[242,246,7,5]
 ];
  ctx.fillStyle='#111';spots.forEach(([x,y,rx,ry],i)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,i*.17,0,Math.PI*2);ctx.fill()});
- const tex=new THREE.CanvasTexture(cv);tex.wrapS=THREE.ClampToEdgeWrapping;tex.wrapT=THREE.ClampToEdgeWrapping;tex.needsUpdate=true;return tex;
+ const tex=new THREE.CanvasTexture(cv);
+ tex.wrapS=THREE.RepeatWrapping;
+ tex.wrapT=THREE.RepeatWrapping;
+ tex.needsUpdate=true;return tex;
 }
 leopardTextures['leopard-yellow']=makeLeopardTexture('#f3d23b');
 leopardTextures['leopard-pink']=makeLeopardTexture('#f06292');
@@ -495,10 +498,18 @@ function rebuildShape(record){
     const pos=shapeGeometry.getAttribute('position');
     const uv=shapeGeometry.getAttribute('uv');
     const sw=surface.userData.width,sh=surface.userData.height;
+    // Keep the print tied to the whole surface, with enough repetition that
+    // narrow side panels receive a complete pattern rather than a localized
+    // slice of the square source texture.
+    const patternScale=1.35;
+    const repeatX=Math.max(1,sw*patternScale);
+    const repeatY=Math.max(1,sh*patternScale);
     for(let i=0;i<pos.count;i++){
-      uv.setXY(i,(pos.getX(i)+sw/2)/sw,(pos.getY(i)+sh/2)/sh);
+      uv.setXY(i,((pos.getX(i)+sw/2)/sw)*repeatX,((pos.getY(i)+sh/2)/sh)*repeatY);
     }
     uv.needsUpdate=true;
+    record.texture.wrapS=THREE.RepeatWrapping;
+    record.texture.wrapT=THREE.RepeatWrapping;
   }
   record.mesh=new THREE.Mesh(shapeGeometry,
     new THREE.MeshBasicMaterial({color:record.color||0xd9f5f5,side:THREE.DoubleSide}));
@@ -626,10 +637,13 @@ function addPolygonToSurface(surface,shapeName){
   const shift=w*(shapeTemplates[shapeName]??.085)*(orientation==='left'?-1:1);
   const rightBoundary=boundaryFromShift(leftBoundary,span,shift);
 
+  const snappedToLeft=leftBoundary.bottom===-w/2&&leftBoundary.top===-w/2;
+  const snappedToRight=leftBoundary.bottom===w/2&&leftBoundary.top===w/2;
+  const actualStart=snappedToLeft?0:(snappedToRight?1:(leftBoundary.bottom+w/2)/w);
+  const actualEnd=Math.min(1,actualStart+minUnit);
   const record={
-    surface,index:records.length,start:records.length?records[records.length-1].end:0,
-    end:(records.length+1)*minUnit,shapeName,orientation,
-    color:0xd9f5f5,texture:null,leftBoundary,rightBoundary
+    surface,index:records.length,start:actualStart,end:actualEnd,
+    shapeName,orientation,color:0xd9f5f5,texture:null,leftBoundary,rightBoundary
   };
   records.push(record);
   polygonRecords.set(surface,records);
@@ -687,10 +701,11 @@ function updateDraggedShape(e){
   }else{
     const proposed=(p.x+surface.userData.width/2)/surface.userData.width;
     const minRight=record.start+minUnit;
-    // The right handle retains the existing behavior: a shape can encroach
-    // into the following shape's allocation, but cannot become narrower than
-    // one-fifth of the surface.
-    const maxRight=i<records.length-1?records[i+1].end:1.35;
+    // Never allow the working edge to bury the shape completely beyond the
+    // surface edge. The final shape can reach the face edge, while earlier
+    // shapes retain their encroachment behavior against the next allocation.
+    const nextLimit=i<records.length-1?records[i+1].end:1;
+    const maxRight=Math.max(minRight,nextLimit);
     const newEnd=Math.max(minRight,Math.min(maxRight,proposed));
     const delta=(newEnd-record.end)*surface.userData.width;
     record.rightBoundary.bottom+=delta;
